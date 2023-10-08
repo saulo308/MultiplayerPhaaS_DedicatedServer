@@ -1,0 +1,7 @@
+﻿C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.Cpp.Analysis.props(24,5): warning MSB4211: The property "MsvcAnalysisPluginPath" is being set to a value for the first time, but it was already consumed at "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.CodeAnalysis.Extensions.props (33,5)".
+gameenginewin32.obj : error LNK2019: unresolved external symbol Direct3DCreate9 referenced in function "private: bool __cdecl CGameEngineWin32::BInitializeD3D9(void)" (?BInitializeD3D9@CGameEngineWin32@@AEAA_NXZ)
+gameenginewin32.obj : error LNK2019: unresolved external symbol D3DXCreateFontA referenced in function "public: virtual int __cdecl CGameEngineWin32::HCreateFont(int,int,bool,char const *)" (?HCreateFont@CGameEngineWin32@@UEAAHHH_NPEBD@Z)
+C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86\d3d9.lib : warning LNK4272: library machine type 'x86' conflicts with target machine type 'x64'
+C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86\d3dx9.lib : warning LNK4272: library machine type 'x86' conflicts with target machine type 'x64'
+C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86\dxguid.lib : warning LNK4272: library machine type 'x86' conflicts with target machine type 'x64'
+win64\Debug\SteamworksExample.exe : fatal error LNK1120: 2 unresolved externals
