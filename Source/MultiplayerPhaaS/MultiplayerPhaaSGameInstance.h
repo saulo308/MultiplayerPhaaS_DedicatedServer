@@ -31,15 +31,6 @@ public:
 
 public:
 	/** 
-	* Hosts a new session using ServerTravel which players' may connect to. 
-	* Thus, turns the player into a hosting server.
-	*
-	* @param SessionName The session name to host
-	*/
-	UFUNCTION(Exec)
-	void HostSession(const FName& SessionName);
-
-	/** 
 	* Joins a server using ClientTravel. Passes the server's ip address as
 	* parameter
 	* 
@@ -65,14 +56,6 @@ public:
 
 private:
 	/** 
-	* Request the creation of a new session using the online session 
-	* interface.
-	* 
-	* @param NewSessionName The new session name
-	*/
-	void CreateNewSession(const FName& NewSessionName);
-
-	/** 
 	* Executes a FindSessions() on SessionInterface. The OnFindSessionsComplete
 	* callback will broadcast a delegate with the found sessions' data. Can be 
 	* used to refresh the available online sessions list shown to player.
@@ -80,31 +63,6 @@ private:
 	void FindAvaialableSessions();
 
 private:
-	/** 
-	* Called when the online session interface create session has finished
-	* processing. This will execute a server travel to the lobby map if the 
-	* session creation was sucessful.
-	*
-	* @param SessionName The created session name
-	* @param BSuccess Flag that indicates if the session creation was 
-	* sucessful.
-	*/
-	void OnCreateSessionComplete(FName SessionName, bool BSuccess);
-
-
-	/**
-	* Called when the online session interface destroy session has finished
-	* processing. This will request a session creation with the given session
-	* name. 
-	* 
-	* @note TODO: This method should not create a new session with the given
-	* name.
-	*
-	* @param SessionName The destroyed session name
-	* @param BSuccess Flag that indicates if the session destroy was sucessful.
-	*/
-	void OnDestroySessionComplete(FName SessionName, bool BSuccess);
-
 	/**
 	* Called when the online session interface find session has finished
 	* processing. Moreover, broadcasts the delegate to inform the found online

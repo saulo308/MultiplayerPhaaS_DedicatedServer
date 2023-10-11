@@ -56,13 +56,6 @@ private:
 		(const TArray<struct FAvailableSessionData> FoundSessionsData);
 
 	/**
-	* Called when the "HostServerBtn" has been clicked. Will start hosting
-	* a server.
-	*/
-	UFUNCTION()
-	void OnHostServerBtnClicked();
-
-	/**
 	* Called when the "JoinServerBtn" has been clicked. Will get the server
 	* ip address from the UTextBlock and join a server.
 	*/

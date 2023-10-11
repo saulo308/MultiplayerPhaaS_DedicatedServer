@@ -71,18 +71,6 @@ void UMainMenuW::OnOpenJoinServerMenuBtnClicked()
 	MainMenuInterface->FindAvaialableSessions();
 }
 
-void UMainMenuW::OnHostServerBtnClicked()
-{
-	// Check if interface is null
-	check(MainMenuInterface != nullptr);
-
-	// Get the user chosen session name
-	const FString ChosenSessionName = "TEST";
-
-	// Request host session
-	MainMenuInterface->HostSession(FName(*ChosenSessionName));
-}
-
 void UMainMenuW::OnJoinServerBtnClicked()
 {
 	// Check if interface is null

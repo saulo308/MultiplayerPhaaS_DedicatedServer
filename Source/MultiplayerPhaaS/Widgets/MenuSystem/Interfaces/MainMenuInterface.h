@@ -55,13 +55,6 @@ class MULTIPLAYERPHAAS_API IMainMenuInterface
 
 public:
 	/** 
-	* Hosts a game session. Turns the client into a hosting server. 
-	* 
-	* @param SessionName The desired session name to host
-	*/
-	virtual void HostSession(const FName& SessionName) = 0;
-
-	/** 
 	* Joins a existing server. The param should be the index of the server
 	* on the available server list entry.
 	* 
