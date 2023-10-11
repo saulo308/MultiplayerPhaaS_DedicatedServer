@@ -14,7 +14,8 @@
 * to await players connections.
 */
 UCLASS()
-class MULTIPLAYERPHAAS_API ABouncingSpheresServerGameSession : public AGameSession
+class MULTIPLAYERPHAAS_API ABouncingSpheresServerGameSession : 
+	public AGameSession
 {
 	GENERATED_BODY()
 	
@@ -25,6 +26,13 @@ public:
 	* interface.
 	*/
 	virtual void RegisterServer() override;
+
+	/**
+	* Starts the current session. As this is only called on the server,
+	* the "CurrentHostedSessionName" will be set once the server creates the
+	* current session.
+	*/
+	void StartCurrentSession();
 
 private:
 	/**
@@ -74,4 +82,8 @@ private:
 
 	/** The OnlineSubsystem's session interface */
 	IOnlineSessionPtr OnlineSessionInterface;
+
+private:
+	/** The current hosted session name. */
+	FName CurrentHostedSessionName = FName();
 };

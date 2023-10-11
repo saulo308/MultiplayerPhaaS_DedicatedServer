@@ -4,6 +4,7 @@
 #include "LobbyGameMode.h"
 #include "MultiplayerPhaaS/MultiplayerPhaaSLogDeclaration.h"
 #include "MultiplayerPhaaS/MultiplayerPhaaSGameInstance.h"
+#include "MultiplayerPhaaS/BouncingSpheres/Gameplay/GameSessions/BouncingSpheresServerGameSession.h"
 
 void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 {
@@ -72,9 +73,16 @@ void ALobbyGameMode::StartGame()
 
 	UE_LOG(LogMultiplayerPhaaS, Log, TEXT("Request start session..."));
 
-	// Start the current session on online session interface
-	CurrentGameInstance->StartCurrentSession();
+	// Get game session to start current session
+	const auto ServerGameSession = 
+		Cast<ABouncingSpheresServerGameSession>(GameSession);
 
+	// Check if server game session is valid
+	check(ServerGameSession != nullptr);
+
+	// Start the current session
+	ServerGameSession->StartCurrentSession();
+	
 	// Execute server travel to the actual game world map
-	GetWorld()->ServerTravel("/Game/Maps/Map_GameWorldTest?listen");
+	GetWorld()->ServerTravel("/Game/Maps/Map_GameWorldTest");
 }

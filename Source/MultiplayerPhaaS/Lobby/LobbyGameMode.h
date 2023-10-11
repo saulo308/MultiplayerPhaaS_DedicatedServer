@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/GameModeBase.h"
+#include "MultiplayerPhaaS/BouncingSpheres/Gameplay/GameModes/BouncingSpheresServerGameMode.h"
 #include "LobbyGameMode.generated.h"
 
 /**
@@ -12,7 +12,8 @@
 * connected to the lobby.
 */
 UCLASS()
-class MULTIPLAYERPHAAS_API ALobbyGameMode : public AGameModeBase
+class MULTIPLAYERPHAAS_API ALobbyGameMode : 
+	public ABouncingSpheresServerGameMode
 {
 	GENERATED_BODY()
 

@@ -90,9 +90,6 @@ void UMultiplayerPhaaSGameInstance::JoinServer
 	DesiredSessionToJoin.Session.SessionSettings.Get(SESSION_NAME_KEY, 
 		DesiredSessionName);
 
-	// Store the chosen session name
-	CurrentHostedSessionName = FName(*DesiredSessionName);
-
 	// Check if online session intarface is valid
 	check(OnlineSessionInterface);
 
@@ -100,17 +97,8 @@ void UMultiplayerPhaaSGameInstance::JoinServer
 		*DesiredSessionName);
 
 	// Join desired session
-	OnlineSessionInterface->JoinSession(0, CurrentHostedSessionName,
+	OnlineSessionInterface->JoinSession(0, FName(*DesiredSessionName),
 		DesiredSessionToJoin);
-}
-
-void UMultiplayerPhaaSGameInstance::StartCurrentSession()
-{
-	// Check if the session interface is valid
-	check(OnlineSessionInterface);
-
-	// Start the online session created by this server
-	OnlineSessionInterface->StartSession(CurrentHostedSessionName);
 }
 
 void UMultiplayerPhaaSGameInstance::FindAvaialableSessions()

@@ -7,10 +7,11 @@
 #include "BouncingSpheresServerGameMode.generated.h"
 
 /**
- * 
- */
+* 
+*/
 UCLASS()
-class MULTIPLAYERPHAAS_API ABouncingSpheresServerGameMode : public AGameModeBase
+class MULTIPLAYERPHAAS_API ABouncingSpheresServerGameMode 
+	: public AGameModeBase
 {
 	GENERATED_BODY()
 	

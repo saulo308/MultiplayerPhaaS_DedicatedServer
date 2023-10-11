@@ -96,6 +96,18 @@ void ABouncingSpheresServerGameSession::CreateNewSession
 
 	// Creating session
 	OnlineSessionInterface->CreateSession(0, NewSessionName, SessionSettings);
+
+	// Store the chosen session name
+	CurrentHostedSessionName = NewSessionName;
+}
+
+void ABouncingSpheresServerGameSession::StartCurrentSession()
+{
+	// Check if the session interface is valid
+	check(OnlineSessionInterface);
+
+	// Start the online session created by this server
+	OnlineSessionInterface->StartSession(CurrentHostedSessionName);
 }
 
 void ABouncingSpheresServerGameSession::OnCreateSessionComplete

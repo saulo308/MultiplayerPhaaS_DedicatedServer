@@ -47,13 +47,6 @@ public:
 	/** The init method. Called to start up the game instance. */
 	virtual void Init() override;
 
-	/** 
-	* Starts the current session. As this is only called on the server,
-	* the "CurrentHostedSessionName" will be set once the server creates the
-	* current session.
-	*/
-	void StartCurrentSession();
-
 private:
 	/** 
 	* Executes a FindSessions() on SessionInterface. The OnFindSessionsComplete
@@ -104,8 +97,4 @@ private:
 	* found sessions.
 	*/
 	TSharedPtr<class FOnlineSessionSearch> OnlineSessionSearchSharedPtr;
-
-private:
-	/** The current hosted session name. */
-	FName CurrentHostedSessionName = FName();
 };
