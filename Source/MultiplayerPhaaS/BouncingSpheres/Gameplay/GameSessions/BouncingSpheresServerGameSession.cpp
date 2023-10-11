@@ -37,7 +37,7 @@ void ABouncingSpheresServerGameSession::RegisterServer()
 		&ABouncingSpheresServerGameSession::OnDestroySessionComplete);
 
 	// Starting hosting a new session
-	HostSession("TestSession");
+	HostSession("BouncingSpheresServer");
 }
 
 void ABouncingSpheresServerGameSession::HostSession
