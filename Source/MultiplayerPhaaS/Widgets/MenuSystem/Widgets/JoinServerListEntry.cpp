@@ -4,7 +4,7 @@
 #include "JoinServerListEntry.h"
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
-#include "MultiplayerPhaas/MultiplayerPhaaSLogDeclaration.h"
+#include "MultiplayerPhaas/MultiplayerPhaaSLogging.h"
 #include "MultiplayerPhaaS/Widgets/MenuSystem/Interfaces/MainMenuInterface.h"
 
 void UJoinServerListEntry::NativeConstruct()
@@ -54,8 +54,8 @@ void UJoinServerListEntry::OnSeverEntryClicked()
 	// If this server list entry index is not set, something went wrong
 	if (!ServerListEntryIndex.IsSet())
 	{
-		UE_LOG(LogMultiplayerPhaaS, Warning, 
-			TEXT("Could not selected server list entry as the entry index has not been set."));
+		MPHAAS_LOG_WARNING
+			(TEXT("Could not selected server list entry as the entry index has not been set."));
 		return;
 	}
 

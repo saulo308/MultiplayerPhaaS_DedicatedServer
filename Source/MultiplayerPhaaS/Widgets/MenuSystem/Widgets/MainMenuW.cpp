@@ -8,7 +8,7 @@
 #include "Components/EditableTextBox.h"
 #include "Components/ScrollBox.h"
 #include "JoinServerListEntry.h"
-#include "MultiplayerPhaaS/MultiplayerPhaaSLogDeclaration.h"
+#include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
 
 void UMainMenuW::NativeConstruct()
 {
@@ -152,8 +152,8 @@ void UMainMenuW::OnQuitGameClicked()
 
 void UMainMenuW::OnServerListEntrySelected(const uint32 SelectedEntryIndex)
 {
-	UE_LOG(LogMultiplayerPhaaS, Log,
-		TEXT("Selected server list entry with index: %d"), SelectedEntryIndex);
+	MPHAAS_LOG_INFO(TEXT("Selected server list entry with index: %d"), 
+		SelectedEntryIndex);
 
 	// Get all the entries on the scroll box (on the server list)
 	const auto& ServerListEntries = ServerListScrollBox->GetAllChildren();

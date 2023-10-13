@@ -22,7 +22,7 @@ public:
 	*
 	* @InMainMenuInterface The main menu interface reference
 	*/
-	inline virtual void SetMainMenuInterface
+	virtual void SetMainMenuInterface
 		(IMainMenuInterface* InMainMenuInterface)
 		{ MainMenuInterface = InMainMenuInterface; }
 
