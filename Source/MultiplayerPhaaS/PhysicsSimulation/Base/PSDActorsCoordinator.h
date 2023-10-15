@@ -63,7 +63,7 @@ public:
 	* BouncingSpheres test map
 	*/
 	UFUNCTION(BlueprintCallable)
-	void StartPSDActorsTest(const FString& SocketServerIpAddr, 
+	void StartPSDActorsSimulationTest(const FString& SocketServerIpAddr,
 		float TestDurationInSeconds = 30.f);
 
 public:

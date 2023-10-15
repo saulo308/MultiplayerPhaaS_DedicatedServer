@@ -117,7 +117,7 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 	MPHAAS_LOG_INFO(TEXT("PSD actors stopped simulating."));
 }
 
-void APSDActorsCoordinator::StartPSDActorsTest
+void APSDActorsCoordinator::StartPSDActorsSimulationTest
 	(const FString& SocketServerIpAddr, float TestDurationInSeconds/*=30.f*/)
 {
 	// Start the PSD actors simulation
