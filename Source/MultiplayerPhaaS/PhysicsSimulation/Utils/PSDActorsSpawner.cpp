@@ -16,7 +16,7 @@ void APSDActorsSpawner::BeginPlay()
 	Super::BeginPlay();
 }
 
-void APSDActorsSpawner::SpawnPSDActors_Implementation
+void APSDActorsSpawner::SpawnPSDActors
 	(const int32 NumberOfActorsToSpawn)
 {
 	if (NumberOfActorsToSpawn <= 0)

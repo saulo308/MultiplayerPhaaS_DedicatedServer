@@ -31,7 +31,7 @@ public:
 	* 
 	* @param NumberOfActorsToSpawn The number of actors to spawn on the area.
 	*/
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable)
 	void SpawnPSDActors(const int32 NumberOfActorsToSpawn);
 
 	/** Destroys all the PSD actors on the level. */

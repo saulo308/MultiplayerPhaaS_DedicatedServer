@@ -5,12 +5,12 @@
 #include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
 #include "Kismet/GameplayStatics.h"
 #include "PSDActorBase.h"
+#include "Net/UnrealNetwork.h"
 
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <chrono>
-
 
 APSDActorsCoordinator::APSDActorsCoordinator()
 {
@@ -31,7 +31,7 @@ void APSDActorsCoordinator::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bIsSimulating)
+	if (bIsSimulating && HasAuthority())
 	{
 		// Update PSD actors by simulating physics on the service
 		// and parsing it's results with the new actor position
@@ -43,7 +43,7 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 	(const FString& SocketServerIpAddr)
 {
 	MPHAAS_LOG_INFO(TEXT("Starting PSD actors simulation."));
-
+	/*
 	// Get all PSDActors
 	TArray<AActor*> FoundActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(),
@@ -83,7 +83,7 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 
 	// Initialize physics world on the physics service
 	InitializePhysicsWorld();
-
+	*/
 	// Set the flag to start simulating on each tick
 	bIsSimulating = true;
 
@@ -100,7 +100,7 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 	MPHAAS_LOG_INFO(TEXT("Stopping PSD actors simulation."));
 
 	bIsSimulating = false;
-
+	/*
 	// Close Socket connection with localhost server
 	const bool bWaCloseSocketSuccess =
 		FSocketClientProxy::CloseSocketConnection();
@@ -113,7 +113,7 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 		return;
 	}
 
-	MPHAAS_LOG_INFO(TEXT("Physics service service socket closed."));
+	MPHAAS_LOG_INFO(TEXT("Physics service service socket closed."));*/
 	MPHAAS_LOG_INFO(TEXT("PSD actors stopped simulating."));
 }
 
@@ -173,7 +173,7 @@ void APSDActorsCoordinator::UpdatePSDActors()
 	}
 
 	MPHAAS_LOG_INFO(TEXT("Updating PSD actors for this frame."));
-
+	/*
 	// Check if we have a valid connection
 	if (!FSocketClientProxy::HasValidConnection())
 	{
@@ -270,5 +270,5 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		const FVector NewRotEuler(NewRotX, NewRotY, NewRotZ);
 
 		ActorToUpdate->UpdateRotationAfterPhysicsSimulation(NewRotEuler);
-	}
+	}*/
 }

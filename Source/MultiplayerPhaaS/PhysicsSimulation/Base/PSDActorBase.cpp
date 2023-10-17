@@ -19,6 +19,7 @@ APSDActorBase::APSDActorBase()
 
 	// Set this actor to replicate as it will spawn on the server
 	bReplicates = true;
+	SetReplicateMovement(true);
 }
 
 void APSDActorBase::BeginPlay()
