@@ -19,6 +19,9 @@ void APSDActorsSpawner::BeginPlay()
 void APSDActorsSpawner::SpawnPSDActors
 	(const int32 NumberOfActorsToSpawn)
 {
+	MPHAAS_LOG_INFO(TEXT("Requested spawn of %d PSD Actors."), 
+		NumberOfActorsToSpawn);
+
 	if (NumberOfActorsToSpawn <= 0)
 	{
 		MPHAAS_LOG_ERROR
@@ -88,6 +91,8 @@ void APSDActorsSpawner::SpawnPSDActors
 
 void APSDActorsSpawner::DestroyPSDActors()
 {
+	MPHAAS_LOG_INFO(TEXT("Destroying all PSD Actors"));
+
 	// Get all PSDActors
 	TArray<AActor*> FoundActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(),

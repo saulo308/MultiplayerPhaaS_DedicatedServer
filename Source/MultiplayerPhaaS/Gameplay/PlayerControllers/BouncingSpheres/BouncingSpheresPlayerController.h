@@ -92,21 +92,41 @@ private:
 	UFUNCTION()
 	void OnPauseKeyPressed();
 
+	/**
+	* Called when the open bouncing spheres menu widget key has been presed.
+	* Will show the main bouncing spheres menu widget.
+	*/
+	UFUNCTION()
+	void OnOpenBouncingSpheresMenu();
+
 private:
-	/** */
+	/** 
+	* Get the PSDActors controllers on the map. Will get both the 
+	* APSDActorsCoordinator and APSDActorsSpanwer.
+	*/
 	void GetPSDActorsControllers();
 
 public:
 	/** The pause menu widget class to create */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSubclassOf<class UMenuUserWidgetBase> PauseMenuWidgetClass;
+	TSubclassOf<class UPauseMenuW> PauseMenuWidgetClass;
+
+	/** The bouncing spheres menu widget class to create */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSubclassOf<class UBouncingSpheresMainW> BouncingSpheresMainWidgetClass;
 
 private:
 	/** The created pause menu widget reference */
-	UMenuUserWidgetBase* PauseMenuWidget = nullptr;
+	class UPauseMenuW* PauseMenuWidget = nullptr;
+
+	/** The created pause bouncing spheres widget widget reference */
+	class UBouncingSpheresMainW* BouncingSpheresMainWidget = nullptr;
 
 private:
-	/** */
+	/**
+	* Flag that indicates if the bouncing spheres simulation is currently 
+	* active
+	*/
 	UPROPERTY(Replicated)
 	bool bIsBouncingSpheresSimulationActive = false;
 

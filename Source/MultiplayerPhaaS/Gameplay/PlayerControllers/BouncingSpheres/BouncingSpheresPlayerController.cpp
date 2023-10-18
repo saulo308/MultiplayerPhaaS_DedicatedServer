@@ -2,23 +2,32 @@
 
 
 #include "BouncingSpheresPlayerController.h"
+
 #include "Blueprint/UserWidget.h"
 #include "MultiplayerPhaaS/Widgets/MenuSystem/Widgets/PauseMenuW.h"
+#include "MultiplayerPhaaS/Widgets/BouncingSpheres/BouncingSpheresMainW.h"
+
 #include "MultiplayerPhaaS/Gameplay/GameInstances/ClientGameInstanceBase.h"
 #include "MultiplayerPhaaS/SessionManagement/ClientSessionManager.h"
-
 #include "Net/UnrealNetwork.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "MultiplayerPhaaS/PhysicsSimulation/Base/PSDActorsCoordinator.h"
 #include "MultiplayerPhaaS/PhysicsSimulation/Utils/PSDActorsSpawner.h"
 
+#include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
+
 void ABouncingSpheresPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
+	// Bind open game pause menu input action
 	InputComponent->BindAction("OpenGamePause", IE_Pressed, this,
 		&ABouncingSpheresPlayerController::OnPauseKeyPressed);
+
+	// Bind open bouncing spheres menu input action
+	InputComponent->BindAction("OpenBouncingSpheresMenu", IE_Pressed, this,
+		&ABouncingSpheresPlayerController::OnOpenBouncingSpheresMenu);
 }
 
 void ABouncingSpheresPlayerController::Tick(float DeltaTime)
@@ -38,6 +47,8 @@ void ABouncingSpheresPlayerController::Tick(float DeltaTime)
 
 void ABouncingSpheresPlayerController::OnPauseKeyPressed()
 {
+	MPHAAS_LOG_INFO(TEXT("Requested pause menu."));
+
 	// Avoid executing this on the server
 	if (HasAuthority())
 	{
@@ -45,11 +56,14 @@ void ABouncingSpheresPlayerController::OnPauseKeyPressed()
 	}
 
 	// Check if the pause menu widget class is valid
-	check(PauseMenuWidgetClass != nullptr);
+	check(PauseMenuWidgetClass);
 
 	// Create and show the pause menu on screen
 	PauseMenuWidget = CreateWidget<UPauseMenuW>(this, PauseMenuWidgetClass,
 		FName("PauseMenuWidget"));
+
+	// Check if widget is valid
+	check(PauseMenuWidget);
 	PauseMenuWidget->ShowWidget();
 
 	// Get the client game instance
@@ -68,6 +82,56 @@ void ABouncingSpheresPlayerController::OnPauseKeyPressed()
 
 	// Set the pause menu's interface
 	PauseMenuWidget->SetMainMenuInterface(ClientSessionManger);
+}
+
+void ABouncingSpheresPlayerController::OnOpenBouncingSpheresMenu()
+{
+	MPHAAS_LOG_INFO(TEXT("Requested bouncing spheres menu."));
+
+	// Avoid executing this on the server
+	if (HasAuthority())
+	{
+		return;
+	}
+
+	// Check if the menu is already valid. If it is, just destroy it (thus,
+	// this method works as a flip flop)
+	if (BouncingSpheresMainWidget)
+	{
+		// Destroy the widget
+		BouncingSpheresMainWidget->DestroyWidget();
+		BouncingSpheresMainWidget = nullptr;
+
+		// Set the input mode to game Only
+		FInputModeGameOnly InputModeGameOnly;
+		SetInputMode(InputModeGameOnly);
+
+		// Hide mouse cursor
+		bShowMouseCursor = false;
+
+		return;
+	}
+
+	// Check if the bouncing spheres menu widget class is valid
+	check(BouncingSpheresMainWidgetClass);
+
+	// Create and show the pause menu on screen
+	BouncingSpheresMainWidget = CreateWidget<UBouncingSpheresMainW>(this,
+		BouncingSpheresMainWidgetClass,
+		FName("BouncingSpheresMenu"));
+
+	// Check if widget is valid
+	check(BouncingSpheresMainWidget);
+	BouncingSpheresMainWidget->ShowWidget();
+
+	// Set the input mode to Game and UI
+	FInputModeGameAndUI InputModeGameAndUI;
+	InputModeGameAndUI.SetWidgetToFocus
+		(BouncingSpheresMainWidget->TakeWidget());
+	SetInputMode(InputModeGameAndUI);
+
+	// Show mouse cursor
+	bShowMouseCursor = true;
 }
 
 void ABouncingSpheresPlayerController::GetPSDActorsControllers()
