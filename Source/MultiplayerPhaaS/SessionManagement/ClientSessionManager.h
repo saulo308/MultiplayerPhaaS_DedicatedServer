@@ -39,13 +39,21 @@ public:
 
 public:
 	/**
+	* Joins a server using ClientTravel. Passes the server's index on the 
+	* servers list.
+	*
+	* @param ServerListEntryIndex The server's index on the server list to
+	* connect to
+	*/
+	void JoinServer(const uint32& ServerListEntryIndex);
+
+	/**
 	* Joins a server using ClientTravel. Passes the server's ip address as
 	* parameter
 	*
 	* @param ServerIp The server's ip to connect to
 	*/
-	UFUNCTION(Exec)
-	void JoinServer(const uint32& ServerListEntryIndex);
+	void JoinServer(const FString& ServerIpAddress);
 
 	/** Quits a server by loading the game's main menu */
 	UFUNCTION(Exec)

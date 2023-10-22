@@ -104,6 +104,25 @@ void UClientSessionManager::JoinServer(const uint32& ServerListEntryIndex)
 		DesiredSessionToJoin);
 }
 
+void UClientSessionManager::JoinServer(const FString& ServerIpAddress)
+{
+	MPHAAS_LOG_INFO(TEXT("Join server requested for ip: %s"),
+		*ServerIpAddress);
+
+	// Get player controller
+	const auto PlayerController = WorldRef->GetFirstPlayerController();
+	if (!PlayerController)
+	{
+		UE_LOG(LogMultiplayerPhaaS, Error,
+			TEXT("No player controller valid when joining server."));
+		return;
+	}
+
+	// Execute client travel to join the server
+	PlayerController->ClientTravel(ServerIpAddress,
+		ETravelType::TRAVEL_Absolute);
+}
+
 void UClientSessionManager::FindAvaialableSessions()
 {
 	MPHAAS_LOG_INFO(TEXT("Finding online sessions..."));

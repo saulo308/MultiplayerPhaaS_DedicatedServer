@@ -63,6 +63,14 @@ public:
 	*/
 	virtual void JoinServer(const uint32& ServerListEntryIndex) = 0;
 
+	/**
+	* Joins a existing server. The param should be the server ip address to
+	* connect to.
+	*
+	* @param ServerListEntryIndex The server ip address to connect to.
+	*/
+	virtual void JoinServer(const FString& ServerIpAddress) = 0;
+
 	/** 
 	* Finds the available sessions to player. May be used to show player a 
 	* available sessions list

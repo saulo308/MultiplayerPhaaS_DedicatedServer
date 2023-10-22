@@ -15,13 +15,13 @@ void UMainMenuW::NativeConstruct()
 	Super::NativeConstruct();
 
 	// Check if buttons are valid
-	check(OpenJoinServerMenuBtn != nullptr);
+	//check(OpenJoinServerMenuBtn != nullptr);
 	check(JoinServerBtn != nullptr);
 	check(BackToMainMenuBtn != nullptr);
 
 	// Bind main menu buttons (open host server menu and open join server menu)
-	OpenJoinServerMenuBtn->OnClicked.AddDynamic(this,
-		&UMainMenuW::OnOpenJoinServerMenuBtnClicked);
+	//OpenJoinServerMenuBtn->OnClicked.AddDynamic(this,
+		//&UMainMenuW::OnOpenJoinServerMenuBtnClicked);
 
 	// Bind join server menu buttons (join server and back to main menu)
 	JoinServerBtn->OnClicked.AddDynamic(this,
@@ -73,11 +73,22 @@ void UMainMenuW::OnOpenJoinServerMenuBtnClicked()
 
 void UMainMenuW::OnJoinServerBtnClicked()
 {
+	/*
 	// Check if interface is null
 	check(MainMenuInterface != nullptr);
 
 	// Join server passing the selected server list entry index
 	MainMenuInterface->JoinServer(SelectedServerListEntryIndex.GetValue());
+	*/
+
+	// Check if the editable text box is null
+	check(ServerIpAddressTextBox != nullptr);
+
+	// Get the server ip address from the editable text box
+	const FString ServerIpAddr = ServerIpAddressTextBox->GetText().ToString();
+
+	// Request join server. TODO: pass the server ip as parameter
+	MainMenuInterface->JoinServer(ServerIpAddr);
 }
 
 void UMainMenuW::OnBackMainMenuBtnClicked()

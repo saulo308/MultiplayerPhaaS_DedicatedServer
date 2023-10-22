@@ -81,8 +81,8 @@ private:
 
 public:
 	/** The "OpenJoinServerMenu" button reference. */
-	UPROPERTY(meta = (BindWidget))
-	class UButton* OpenJoinServerMenuBtn = nullptr;
+	//UPROPERTY(meta = (BindWidget))
+	//class UButton* OpenJoinServerMenuBtn = nullptr;
 
 	/** The "Joinserver" button reference */
 	UPROPERTY(meta = (BindWidget))
@@ -102,6 +102,13 @@ public:
 	*/
 	UPROPERTY(meta = (BindWidget))
 	class UScrollBox* ServerListScrollBox = nullptr;
+
+	/**
+	* The editable text box player which player writes the server ip address
+	* he wants to connect to.
+	*/
+	UPROPERTY(meta = (BindWidget))
+	class UEditableTextBox* ServerIpAddressTextBox = nullptr;
 
 public:
 	/** The menu switcher. Used to switch menus. */

@@ -77,11 +77,15 @@ void UServerSessionManager::CreateNewSession(const FName& NewSessionName)
 	SessionSettings.bIsLANMatch =
 		(IOnlineSubsystem::Get()->GetSubsystemName() == "NULL") ? true : false;
 
-	// Enable presence to use steam servers
-	SessionSettings.bUsesPresence = true;
+	// Set the dedicated server flag to true
+	SessionSettings.bIsDedicated = true;
 
-	// Enable to use steam lobbies
-	SessionSettings.bUseLobbiesIfAvailable = true;
+	// Disable presence to avoid dedicated server crash
+	SessionSettings.bUsesPresence = false;
+	SessionSettings.bAllowJoinViaPresence = false;
+
+	// Disable lobbies to avoid dedicated server crash
+	SessionSettings.bUseLobbiesIfAvailable = false;
 
 	// Set the number of players the session can have
 	SessionSettings.NumPublicConnections = 5;

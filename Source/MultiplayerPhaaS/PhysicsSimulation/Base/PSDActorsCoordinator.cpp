@@ -43,7 +43,7 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 	(const FString& SocketServerIpAddr)
 {
 	MPHAAS_LOG_INFO(TEXT("Starting PSD actors simulation."));
-	/*
+	
 	// Get all PSDActors
 	TArray<AActor*> FoundActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(),
@@ -65,7 +65,7 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 		// The value is the reference to the actor
 		PSDActorMap.Add(i + 1, PSDActor);
 	}
-
+	
 	// Open Socket connection with the physics service server, given its IpAddr
 	const bool bWasOpenSocketSuccess =
 		FSocketClientProxy::OpenSocketConnectionToLocalhostServer
@@ -83,7 +83,7 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 
 	// Initialize physics world on the physics service
 	InitializePhysicsWorld();
-	*/
+	
 	// Set the flag to start simulating on each tick
 	bIsSimulating = true;
 
@@ -100,7 +100,7 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 	MPHAAS_LOG_INFO(TEXT("Stopping PSD actors simulation."));
 
 	bIsSimulating = false;
-	/*
+	
 	// Close Socket connection with localhost server
 	const bool bWaCloseSocketSuccess =
 		FSocketClientProxy::CloseSocketConnection();
@@ -113,7 +113,7 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 		return;
 	}
 
-	MPHAAS_LOG_INFO(TEXT("Physics service service socket closed."));*/
+	MPHAAS_LOG_INFO(TEXT("Physics service service socket closed."));
 	MPHAAS_LOG_INFO(TEXT("PSD actors stopped simulating."));
 }
 
@@ -173,7 +173,7 @@ void APSDActorsCoordinator::UpdatePSDActors()
 	}
 
 	MPHAAS_LOG_INFO(TEXT("Updating PSD actors for this frame."));
-	/*
+	
 	// Check if we have a valid connection
 	if (!FSocketClientProxy::HasValidConnection())
 	{
@@ -270,5 +270,5 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		const FVector NewRotEuler(NewRotX, NewRotY, NewRotZ);
 
 		ActorToUpdate->UpdateRotationAfterPhysicsSimulation(NewRotEuler);
-	}*/
+	}
 }

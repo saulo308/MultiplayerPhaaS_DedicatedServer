@@ -18,7 +18,7 @@ echo GameInstanceClass=%CLIENT_GAME_INSTANCE_CLASS% >> "%PROJECT_PATH%\Config\De
 move /y "%PROJECT_PATH%\Config\DefaultEngine.tmp.ini" "%PROJECT_PATH%\Config\DefaultEngine.ini"
 
 :: Build your project with the modified GameInstanceClass
-call %ENGINE_PATH%\Engine\Build\BatchFiles\RunUAT.bat  BuildCookRun -project="%PROJECT_PATH%\MultiplayerPhaaS.uproject" -noP4 -platform=Win64 -clientconfig=Development -cook -stage -pak -archive -archivedirectory="%PROJECT_PATH%\Build"
+call %ENGINE_PATH%\Engine\Build\BatchFiles\RunUAT.bat -ScriptsForProject="%PROJECT_PATH%/MultiplayerPhaaS.uproject" BuildCookRun -nocompileeditor -nop4 -project="%PROJECT_PATH%/MultiplayerPhaaS.uproject" -cook -stage -archive -archivedirectory="%PROJECT_PATH%/Build" -package -ue4exe=C:\UE_4.27_Source\Engine\Binaries\Win64\UE4Editor-Cmd.exe -compressed -ddc=DerivedDataBackendGraph -pak -prereqs -nodebuginfo -targetplatform=Win64 -build -target=MultiplayerPhaaS -clientconfig=Development -utf8output -compile
 
 echo "Restoring backup of DefaultEngine.ini..."
 
@@ -47,7 +47,7 @@ echo GameInstanceClass=%SERVER_GAME_INSTANCE_CLASS% >> "%PROJECT_PATH%\Config\De
 move /y "%PROJECT_PATH%\Config\DefaultEngine.tmp.ini" "%PROJECT_PATH%\Config\DefaultEngine.ini"
 
 :: Build your project with the modified GameInstanceClass
-call %ENGINE_PATH%\Engine\Build\BatchFiles\RunUAT.bat BuildCookRun -project="%PROJECT_PATH%\MultiplayerPhaaS.uproject" -noP4 -serverplatform=Win64 -server -serverconfig=Development -cook -noclient -stage -pak -archive -archivedirectory="%PROJECT_PATH%\Build"
+call %ENGINE_PATH%\Engine\Build\BatchFiles\RunUAT.bat -ScriptsForProject="%PROJECT_PATH%/MultiplayerPhaaS.uproject" BuildCookRun -nocompileeditor -nop4 -project="%PROJECT_PATH%/MultiplayerPhaaS.uproject" -cook -stage -archive -archivedirectory="%PROJECT_PATH%/Build" -package -ue4exe=C:\UE_4.27_Source\Engine\Binaries\Win64\UE4Editor-Cmd.exe -compressed -ddc=DerivedDataBackendGraph -pak -prereqs -nodebuginfo -targetplatform=Win64 -build -target=MultiplayerPhaaSServer -serverconfig=Development -utf8output -compile
 
 echo "Restoring backup of DefaultEngine.ini..."
 
