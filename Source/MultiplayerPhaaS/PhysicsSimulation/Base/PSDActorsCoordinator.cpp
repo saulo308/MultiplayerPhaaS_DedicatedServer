@@ -1,6 +1,7 @@
 // 2023 Copyright Saulo Soares, Brazil. All Rights Reserved.
 
 #include "PSDActorsCoordinator.h"
+#include "MultiplayerPhaaS/PhysicsSimulation/Utils/PSDActorsSpawner.h"
 #include "MultiplayerPhaaS/ExternalCommunication/Sockets/SocketClientProxy.h"
 #include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
 #include "Kismet/GameplayStatics.h"
@@ -161,7 +162,7 @@ void APSDActorsCoordinator::InitializePhysicsWorld()
 
 	// Send message to initialize physics world on service
 	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-	(MessageAsChar);
+		(MessageAsChar);
 }
 
 void APSDActorsCoordinator::UpdatePSDActors()
@@ -225,8 +226,8 @@ void APSDActorsCoordinator::UpdatePSDActors()
 	// Foreach line, parse its results (getting each actor pos)
 	for (auto& SimulationResultLine : ParsedSimulationResult)
 	{
-		// Check if the line is just "OK" message
-		if (SimulationResultLine.Contains("OK"))
+		// Check if the line is just "MessageEnd" message
+		if (SimulationResultLine.Contains("MessageEnd"))
 		{
 			continue;
 		}
@@ -239,7 +240,8 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		// Check for errors
 		if (ParsedActorSimulationResult.Num() < 7)
 		{
-			MPHAAS_LOG_ERROR(TEXT("Could not parse line %s. Num is:%d"),
+			MPHAAS_LOG_ERROR
+				(TEXT("Could not parse line \"%s\". Number of arguments is: %d"),
 				*SimulationResultLine, ParsedActorSimulationResult.Num());
 			return;
 		}
@@ -271,4 +273,62 @@ void APSDActorsCoordinator::UpdatePSDActors()
 
 		ActorToUpdate->UpdateRotationAfterPhysicsSimulation(NewRotEuler);
 	}
+}
+
+void APSDActorsCoordinator::SpawnNewPSDSphere(const FVector NewSphereLocation)
+{
+	// Check if we have a valid PSDActors spawner. If not, find it
+	if (!PSDActorsSpanwer)
+	{
+		// Get the PSDActorsSpawner
+		TArray<AActor*> FoundActors;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(),
+			APSDActorsSpawner::StaticClass(), FoundActors);
+
+		// Check if has found the PSDActorsSpawner
+		if (FoundActors.Num() < 1)
+		{
+			MPHAAS_LOG_ERROR
+				(TEXT("No PSDActorsSpawner found on the level to spawn new PSDSphere"));
+			return;
+		}
+
+		// Set the reference
+		PSDActorsSpanwer = Cast<APSDActorsSpawner>(FoundActors[0]);
+	}
+
+	// Spawn the new sphere
+	const auto SpawnedSphere = 
+		PSDActorsSpanwer->SpawnPSDActor(NewSphereLocation);
+
+	// Get the number of already spawned sphere
+	const auto NumberOfSpawnedSpheres = PSDActorMap.Num();
+
+	// The new sphere ID will be the NumberOfSpawnedSpheres + 1
+	const int32 NewSphereID = NumberOfSpawnedSpheres + 1;
+
+	// Add the sphere to the PSDActor map so it's Transform can be updated
+	PSDActorMap.Add(NewSphereID, SpawnedSphere);
+
+	// Create the message to send server
+	// The template is:
+	// "AddSphereBody\n
+	// Id; posX; posY; posZ"
+	const FString SpawnNewPSDSphereMessage = 
+		FString::Printf(TEXT("AddSphereBody\n%d;%f;%f;%f"), NewSphereID, 
+		NewSphereLocation.X, NewSphereLocation.Y, 
+		NewSphereLocation.Z);
+
+	// Convert message to std string
+	std::string MessageAsStdString(TCHAR_TO_UTF8(*SpawnNewPSDSphereMessage));
+
+	// Convert message to char*. This is needed as some UE converting has the
+	// limitation of 128 bytes, returning garbage when it's over it
+	char* MessageAsChar = &MessageAsStdString[0];
+
+	// Send message to initialize physics world on service
+	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
+		(MessageAsChar);
+
+	MPHAAS_LOG_INFO(TEXT("Add new sphere action response: %s"), *Response);
 }

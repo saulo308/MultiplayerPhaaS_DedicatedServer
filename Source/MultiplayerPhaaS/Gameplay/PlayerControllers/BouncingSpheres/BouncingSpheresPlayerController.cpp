@@ -246,6 +246,19 @@ Server_StartPSDActorsTest_Implementation
 	PSDActorCoordinator->StartPSDActorsSimulationTest(ServerIpAddress, 30.f);
 }
 
+void ABouncingSpheresPlayerController::Server_SpawnNewPSDSphere_Implementation
+	(const FVector SphereLocation)
+{
+	// Get the PSDActors controllers (Coordinator and Spawner)
+	GetPSDActorsControllers();
+
+	// Check if the coordinator is valid
+	check(PSDActorCoordinator.Get());
+
+	// Request the PSDActor coordinator to spawn new PSD Sphere at location
+	PSDActorCoordinator->SpawnNewPSDSphere(SphereLocation);
+}
+
 void ABouncingSpheresPlayerController::GetLifetimeReplicatedProps
 	(TArray<FLifetimeProperty >& OutLifetimeProps) const
 {

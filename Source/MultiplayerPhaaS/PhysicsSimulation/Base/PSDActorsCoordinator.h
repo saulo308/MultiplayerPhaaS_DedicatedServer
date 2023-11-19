@@ -40,6 +40,16 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void StopPSDActorsSimulation();
 
+	/**
+	* Spawns a new PSD Sphere. This will request the PSDActorsSpawner to 
+	* create a new PSDSphere as also requesting the physics service to add
+	* the new sphere body on the physics system through the socket proxy.
+	* 
+	* @param NewSphereLocation The sphere initial location to spawn
+	*/
+	UFUNCTION(BlueprintCallable)
+	void SpawnNewPSDSphere(const FVector NewSphereLocation);
+
 	/** 
 	* Getter to the flag "bIsSimulating" to indicate if the PSD actors are
 	* currently simulating physics.
@@ -105,6 +115,9 @@ private:
 	* itself.
 	*/
 	TMap<uint32, class APSDActorBase*> PSDActorMap;
+
+	/** The PSDActors Spawner reference to request PSD Actors spawn */
+	class APSDActorsSpawner* PSDActorsSpanwer = nullptr;
 
 	/** 
 	* Flag that indicates if this PSD actor coordinator is currently updating 

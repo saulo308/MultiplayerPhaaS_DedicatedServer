@@ -226,10 +226,11 @@ FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message)
         // Add receiving response to final message
         FinalReceivedMessage += ReceivedMsgAsString;
 
-        // If message contains OK, this is the final end message, return
+        // If message contains "MessageEnd", this is the final end message, 
+        // return
         // If not, await for next recv as the rest of the message is still
         // comming
-        if (FinalReceivedMessage.Contains("OK"))
+        if (FinalReceivedMessage.Contains("MessageEnd"))
         {
             return FinalReceivedMessage;
         }

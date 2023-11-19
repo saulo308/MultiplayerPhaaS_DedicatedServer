@@ -76,6 +76,14 @@ public:
 	void Server_StartPSDActorsTest(const FString& ServerIpAddress,
 		const int32 NumberOfActorsToSpawn);
 
+	/** 
+	* Spawns a new PSDSphere both on the game and on the physics service.
+	* 
+	* @param SphereLocation The new PSD Sphere initial location to spawn
+	*/
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SpawnNewPSDSphere(const FVector SphereLocation);
+
 public:
 	/** Called once every fame. */
 	virtual void Tick(float DeltaTime) override;

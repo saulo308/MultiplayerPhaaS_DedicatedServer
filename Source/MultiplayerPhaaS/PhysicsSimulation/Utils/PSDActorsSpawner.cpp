@@ -37,14 +37,16 @@ void APSDActorsSpawner::SpawnPSDActors
 	float CurYPosToSpawn = 0.f;
 	float CurZPosToSpawn = 0.f;
 
-	// While we are not finished spawning:
+	// While we are not finished spawning the required amount:
 	while (NumberOfSpawnedActors < NumberOfActorsToSpawn)
 	{
 		// Set the current position equal to the max so we can start decreasing
-		// the x-pos
+		// the x-pos (thus, the first x-pos is MaxXPos)
 		CurXPosToSpawn = MaxXPos;
 
-		// Add the Z position to start a new layer
+		// Add the Z position to start a new layer (once X and Y has reached
+		// the max number of spheres, will create another layer on top of
+		// it and reset X and Y)
 		CurZPosToSpawn += MinZPos;
 
 		// While there's still space to spawn on this "line"
@@ -62,14 +64,8 @@ void APSDActorsSpawner::SpawnPSDActors
 				FVector PositionToSpawn(CurXPosToSpawn, CurYPosToSpawn, 
 					CurZPosToSpawn);
 
-				// Set the spawn params
-				FActorSpawnParameters SpawnParams;
-				SpawnParams.SpawnCollisionHandlingOverride = 
-					ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
 				// Spawn PSD actor
-				GetWorld()->SpawnActor<APSDActorBase>(ActorToSpawn,
-					PositionToSpawn, FRotator::ZeroRotator, SpawnParams);
+				SpawnPSDActor(PositionToSpawn);
 
 				// Increase and check if we reached the number of actors to
 				// spawn
@@ -87,6 +83,18 @@ void APSDActorsSpawner::SpawnPSDActors
 			}
 		}
 	}
+}
+
+APSDActorBase* APSDActorsSpawner::SpawnPSDActor(const FVector SpawnLocation)
+{
+	// Set the spawn params
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride =
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	// Spawn PSD actor
+	return GetWorld()->SpawnActor<APSDActorBase>(ActorToSpawn,
+		SpawnLocation, FRotator::ZeroRotator, SpawnParams);
 }
 
 void APSDActorsSpawner::DestroyPSDActors()

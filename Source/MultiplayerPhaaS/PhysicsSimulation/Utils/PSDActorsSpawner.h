@@ -25,14 +25,23 @@ class MULTIPLAYERPHAAS_API APSDActorsSpawner : public AActor
 
 public:
 	/** 
-	* Spawns the given number of PSD actors on a square area starting from
-	* (0, 0, 0) to (MaxXPos, MaxYPos, MaxZPos). Then, should use a start 
-	* PSD actors simulation to start simulating these actors.
+	* Spawns the given number of PSD actors on a square area determined by 
+	* (MaxXPos, MaxYPos, MaxZPos).
 	* 
 	* @param NumberOfActorsToSpawn The number of actors to spawn on the area.
 	*/
 	UFUNCTION(BlueprintCallable)
 	void SpawnPSDActors(const int32 NumberOfActorsToSpawn);
+
+	/** 
+	* Spawns a PSDActor on a given location.
+	* 
+	* @param SpawnLocation The location to spawn the PSD actor
+	* 
+	* @return The spawned actor
+	*/
+	UFUNCTION(BlueprintCallable)
+	APSDActorBase* SpawnPSDActor(const FVector SpawnLocation);
 
 	/** Destroys all the PSD actors on the level. */
 	UFUNCTION(BlueprintCallable)
