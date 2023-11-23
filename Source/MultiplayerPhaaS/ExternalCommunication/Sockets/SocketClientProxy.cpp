@@ -4,13 +4,20 @@
 #include "SocketClientProxy.h"
 #include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
 
-/** The socket to connect to the physics service server. */
-SOCKET FSocketClientProxy::ConnectionSocket = INVALID_SOCKET;
+/** 
+* The sockets connection map. The key is the server's id and the value the
+* socket connection itself.
+*/
+TMap<int32, SOCKET> FSocketClientProxy::SocketConnectionsMap =
+    TMap<int32, SOCKET>();
 
-bool FSocketClientProxy::OpenSocketConnectionToLocalhostServer
-    (const FString& SocketServerIpAddr)
+bool FSocketClientProxy::OpenSocketConnectionToServer
+    (const FString& ServerIpAddr, const FString& ServerPort, 
+     const int32 ServerId)
 {
-    MPHAAS_LOG_INFO(TEXT("Connecting on:%s"), *SocketServerIpAddr);
+    MPHAAS_LOG_INFO
+        (TEXT("Connecting to socket server \"%s:%s\""), *ServerIpAddr, 
+         *ServerPort);
 
     // Initialize Winsock. This is needed to ensure the startup of the
     // environment to be able to use windows sockets
@@ -21,21 +28,21 @@ bool FSocketClientProxy::OpenSocketConnectionToLocalhostServer
     }
 
     // Get this client (local) addrinfo
-    // This will get the client addr as localhost
-    addrinfo* addrInfoResult = GetServerAddrInfo(SocketServerIpAddr);
-    if (!addrInfoResult)
+    // This will get the server addrinfo
+    addrinfo* AddrInfoResult = GetServerAddrInfo(ServerIpAddr, ServerPort);
+    if (!AddrInfoResult)
     {
         return false;
     }
 
-    // Attempt to connect to the socket server (that is localhost)
-    ConnectSocketToLocalSocketServer(addrInfoResult);
+    // Attempt to connect to the socket server
+    ConnectToServer(AddrInfoResult, ServerId);
 
-    // Free memory as we don't need it anymore
-    freeaddrinfo(addrInfoResult);
+    // Free memory as we don't need the addrinfo anymore
+    freeaddrinfo(AddrInfoResult);
 
-    // Check if we have found a valid connection with server
-    if (ConnectionSocket == INVALID_SOCKET)
+    // Check if we have found a valid connection with the request server
+    if (GetSocketConnectionByServerId(ServerId) == INVALID_SOCKET)
     {
         // If not, clear winsock and return false to avoid further processing
         MPHAAS_LOG_ERROR
@@ -46,15 +53,15 @@ bool FSocketClientProxy::OpenSocketConnectionToLocalhostServer
     }
 
     // All good, ConnectionSocket is up and valid 
-    // (connected to localhost server)
+    MPHAAS_LOG_INFO(TEXT("Connection success."));
     return true;
 }
 
 bool FSocketClientProxy::StartupWinsock()
 {
     // Initialize Winsock
-    WSADATA wsaData;
-    const int StartupResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    WSADATA WsaData;
+    const int StartupResult = WSAStartup(MAKEWORD(2, 2), &WsaData);
     if (StartupResult != 0)
     {
         MPHAAS_LOG_ERROR(TEXT("WSAStartup failed with error: %d"),
@@ -66,48 +73,52 @@ bool FSocketClientProxy::StartupWinsock()
 }
 
 addrinfo* FSocketClientProxy::GetServerAddrInfo
-    (const FString& SocketServerIpAddr)
+    (const FString& ServerIpAddr, const FString& ServerPort)
 {
-    // Create hints to pass as the addr information
-    struct addrinfo hints;
-    ZeroMemory(&hints, sizeof(hints));
+    // Create Hints to pass as the addr information
+    struct addrinfo Hints;
+    ZeroMemory(&Hints, sizeof(Hints));
 
     // Set hits to get a socket of TCP protocol type
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
+    Hints.ai_family = AF_UNSPEC;
+    Hints.ai_socktype = SOCK_STREAM;
+    Hints.ai_protocol = IPPROTO_TCP;
 
-    // Resolve the client address and port
-    addrinfo* addrResultInfo = NULL;
-    const char* serverIpAddr = TCHAR_TO_ANSI(*SocketServerIpAddr);
-    const int addrinfoReturnValue = getaddrinfo(serverIpAddr, DEFAULT_PORT,
-        &hints, &addrResultInfo);
+    // Resolve the server address and port
+    addrinfo* AddrResultInfo = NULL;
+    const char* ServerIpAddrAsChar = TCHAR_TO_ANSI(*ServerIpAddr);
+    const char* ServerPortAsChar = TCHAR_TO_ANSI(*ServerPort);
+    const int AddrinfoReturnValue = getaddrinfo(ServerIpAddrAsChar, 
+        ServerPortAsChar, &Hints, &AddrResultInfo);
 
     // Check for errors
-    if (addrinfoReturnValue != 0)
+    if (AddrinfoReturnValue != 0)
     {
         MPHAAS_LOG_ERROR(TEXT("GetClientAddrInfo() failed with error: %d"),
-            addrinfoReturnValue);
+            AddrinfoReturnValue);
 
         // Clean up winsock
         WSACleanup();
         return NULL;
     }
 
-    return addrResultInfo;
+    return AddrResultInfo;
 }
 
-void FSocketClientProxy::ConnectSocketToLocalSocketServer
-    (addrinfo* addrinfoToConnect)
+void FSocketClientProxy::ConnectToServer(addrinfo* addrinfoToConnect, 
+    const int32 ServerId)
 {
+    // The new connection socket
+    SOCKET NewConnectionSocket = INVALID_SOCKET;
+
     // Attempt to connect to an address until one succeeds
-    struct addrinfo* ptr = NULL;
-    for (ptr = addrinfoToConnect; ptr != NULL; ptr = ptr->ai_next)
+    struct addrinfo* Ptr = NULL;
+    for (Ptr = addrinfoToConnect; Ptr != NULL; Ptr = Ptr->ai_next)
     {
         // Create a SOCKET for connecting to server
-        ConnectionSocket = socket(ptr->ai_family, ptr->ai_socktype,
-            ptr->ai_protocol);
-        if (ConnectionSocket == INVALID_SOCKET)
+        NewConnectionSocket = socket(Ptr->ai_family, Ptr->ai_socktype,
+            Ptr->ai_protocol);
+        if (NewConnectionSocket == INVALID_SOCKET)
         {
             MPHAAS_LOG_ERROR(TEXT("socket failed with error: %d\n"),
                 WSAGetLastError());
@@ -116,15 +127,15 @@ void FSocketClientProxy::ConnectSocketToLocalSocketServer
         }
 
         // Connect to server.
-        const int ConnectResultValue = connect(ConnectionSocket, ptr->ai_addr,
-            (int)ptr->ai_addrlen);
+        const int ConnectResultValue = connect(NewConnectionSocket, 
+            Ptr->ai_addr, (int)Ptr->ai_addrlen);
 
         // Check for errors. If error, just continue to try and get the
         // next connection
         if (ConnectResultValue == SOCKET_ERROR)
         {
-            closesocket(ConnectionSocket);
-            ConnectionSocket = INVALID_SOCKET;
+            closesocket(NewConnectionSocket);
+            NewConnectionSocket = INVALID_SOCKET;
             continue;
         }
 
@@ -132,43 +143,62 @@ void FSocketClientProxy::ConnectSocketToLocalSocketServer
         // processing as we've found a valid connection
         break;
     }
+
+    // If successfully connected to server, add it to the socket connections 
+    // map
+    if (NewConnectionSocket != INVALID_SOCKET)
+    {
+        SocketConnectionsMap.Add(ServerId, NewConnectionSocket);
+    }
 }
 
-bool FSocketClientProxy::CloseSocketConnection()
+bool FSocketClientProxy::CloseAllSocketConnections()
 {
-    // Check if connection socket is not already invalid
-    if (ConnectionSocket == INVALID_SOCKET)
+    // Foreach socket connection
+    for (auto& TargetServerSocketConnection : SocketConnectionsMap)
     {
-        return true;
+        // Check if connection socket is not already invalid
+        if (TargetServerSocketConnection.Value == INVALID_SOCKET)
+        {
+            return true;
+        }
+
+        // Shutdown the connection since no more data will be sent
+        const int ShutdownResult = shutdown(TargetServerSocketConnection.Value, 
+            SD_SEND);
+
+        // Check for shutdown errors
+        if (ShutdownResult == SOCKET_ERROR)
+        {
+            MPHAAS_LOG_ERROR(TEXT("Shutdown failed with error: %d"),
+                WSAGetLastError());
+        }
+
+        // Close socket
+        closesocket(TargetServerSocketConnection.Value);
     }
 
-    // Shutdown the connection since no more data will be sent
-    const int ShutdownResult = shutdown(ConnectionSocket, SD_SEND);
-
-    // Check for shutdown errors
-    if (ShutdownResult == SOCKET_ERROR)
-    {
-        MPHAAS_LOG_ERROR(TEXT("Shutdown failed with error: %d"),
-            WSAGetLastError());
-
-        // Close socket and cleanup winsock
-        closesocket(ConnectionSocket);
-        WSACleanup();
-
-        return false;
-    }
-
-    // Close socket and Cleanup winsock
-    closesocket(ConnectionSocket);
-    ConnectionSocket = INVALID_SOCKET;
+    // Cleanup winsock
     WSACleanup();
+
+    // Clear the socket connections map
+    SocketConnectionsMap.Empty();
 
     return true;
 }
 
-FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message)
+FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message,
+    const int32 ServerId)
 {
-    if (ConnectionSocket == INVALID_SOCKET)
+    MPHAAS_LOG_INFO
+        (TEXT("Sending message to server with id: %d."), ServerId);
+
+    // Get the server's socket connection
+    auto TargetServerSocketConnection =
+        GetSocketConnectionByServerId(ServerId);
+
+    // Check if it's valid
+    if (TargetServerSocketConnection == INVALID_SOCKET)
     {
         MPHAAS_LOG_ERROR
             (TEXT("Could not send message as socket connection is not valid."));
@@ -176,7 +206,7 @@ FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message)
     }
 
     // Sending message
-    const int SendReturn = send(ConnectionSocket, Message,
+    const int SendReturn = send(TargetServerSocketConnection, Message,
         (int)strlen(Message), 0);
 
     // Check for error
@@ -186,8 +216,11 @@ FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message)
             WSAGetLastError());
 
         // Cleanup winsock
-        closesocket(ConnectionSocket);
+        closesocket(TargetServerSocketConnection);
         WSACleanup();
+
+        // Remove server from map as there is some error with it
+        SocketConnectionsMap.Remove(ServerId);
 
         return FString();
     }
@@ -195,17 +228,20 @@ FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message)
     // Setup buffer length to receive message. 
     // Any more characters will be discarded
     // TODO do a better solution for this
-    char recvbuf[DEFAULT_BUFLEN];
-    const int recvbuflen = DEFAULT_BUFLEN;
+    char Recvbuf[DEFAULT_BUFLEN];
+    const int Recvbuflen = DEFAULT_BUFLEN;
 
     // Final received message
     FString FinalReceivedMessage = FString();
 
     while (true)
     {
+        MPHAAS_LOG_INFO(TEXT("Awaiting server response..."));
+
         // Await response from socket 
         // (this will stall the game thread until we receive a response)
-        const int ReceiveReturn = recv(ConnectionSocket, recvbuf, recvbuflen, 0);
+        const int ReceiveReturn = recv(TargetServerSocketConnection, Recvbuf, 
+            Recvbuflen, 0);
 
         // Check for errors
         if (ReceiveReturn < 0)
@@ -220,8 +256,9 @@ FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message)
 
         // Decode message received from socket as FString
         // The buffer will contain the message returned as char
-        // The return value is the amount of bytes, and thus, the message length
-        FString ReceivedMsgAsString(ReceiveReturn, recvbuf);
+        // The return value is the amount of bytes, and thus, the message 
+        // length
+        FString ReceivedMsgAsString(ReceiveReturn, Recvbuf);
 
         // Add receiving response to final message
         FinalReceivedMessage += ReceivedMsgAsString;
@@ -237,4 +274,18 @@ FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message)
     }
 
     return FinalReceivedMessage;
+}
+
+SOCKET FSocketClientProxy::GetSocketConnectionByServerId
+    (const int32 TargetServerId)
+{
+    if (!SocketConnectionsMap.Contains(TargetServerId))
+    {
+        MPHAAS_LOG_ERROR
+            (TEXT("ServerID \"%d\" does not exists on connection map."),
+             TargetServerId);
+        return INVALID_SOCKET;
+    }
+
+    return SocketConnectionsMap[TargetServerId];
 }

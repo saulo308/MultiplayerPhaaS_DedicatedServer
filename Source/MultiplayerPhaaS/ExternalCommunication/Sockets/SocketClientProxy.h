@@ -19,77 +19,119 @@
 /** The default buffer lenght for the socket connection. */
 #define DEFAULT_BUFLEN 1048576
 
-/** 
-* The default port to open the socket connection. This should be the same
-* set on the SocketServerProxy
-*/
-#define DEFAULT_PORT "27015"
-
 /**
-* This class deals with the socket communication with a the physics service 
-* that acts as a server, opening a socket on a given port (DEFAULT_PORT).
+* This class deals with the socket communication with the physics services
+* that acts as a server, opening a socket on a given server ip (with port)
+* and attributing it a given id to easily find it afterwards
 * 
 * The pipeline is:
 * [Game]SocketClientProxy -> [PhysicsService]SocketServerProxy and
 * [PhysicsService]SocketServerProxy -> [Game]SocketClientProxy
 * 
 * - The game works as a socket client.
-* - The physics service works as a socket server
+* - The physics services works as socket servers
 * 
-* Therefore, this class deals with such communication, opening/closing the
-* socket connection. Also, it forwards the messages to the socket server to 
-* request its initialization and physics simulation update to the PSDActors.
+* Therefore, this class deals with such communication, opening/closing
+* socket connections, storing the current set of physics services, and etc. 
+* Also, it forwards the messages to the socket servers to 
+* request its initialization and physics simulation updates.
 */
 class MULTIPLAYERPHAAS_API FSocketClientProxy
 {
 public:
 	/** 
-	* Opens connection with the localhost socket server. Returns a boolean
+	* Opens connection with the a phyiscs service server. Returns a boolean
 	* informing if the connection was succesful.
+	* 
+	* @param ServerIpAddr The server's ip address to connect to
+	* @param ServerPort The server's port to connect to
+	* @param ServerId The server's id. Used to easily find the created physics
+	* service server on the SocketsConnectionMap
 	* 
 	* @return True if the connection was opened succesfully. False otherwise.
 	*/
-	static bool OpenSocketConnectionToLocalhostServer
-		(const FString& SocketServerIpAddr);
-
-	/** Closes the opened socket connection to the localhost server. */
-	static bool CloseSocketConnection();
+	static bool OpenSocketConnectionToServer
+		(const FString& ServerIpAddr, const FString& ServerPort,
+		const int32 ServerId);
 
 	/** 
-	* Sends a message to the localhost socket server and awaits a response.
+	* Closes all the physics service servers socket connections
+	* 
+	* @return True if closing all socket connection was succesful
+	*/
+	static bool CloseAllSocketConnections();
+
+	/** 
+	* Sends a message to the physics service server and awaits a response.
 	* This should be used to send physics requests to the physics service, such
 	* as initialization and update. 
 	* 
-	* @param Message The message to forward to the socket server that will
-	* send a gRPC to the physics service.
+	* @param Message The message to forward to the socket server with the given
+	* message
+	* @param ServerId The server id to send the message to
 	* 
-	* @return The physics service's response to such message
+	* @return The physics service's server response to such message
 	*/
-	static FString SendMessageAndGetResponse(const char* Message);
+	static FString SendMessageAndGetResponse(const char* Message,
+		const int32 ServerId);
 	
 public:
-	/** Getter to know if the socket connection is valid. */
+	/** 
+	* Getter to know there is at least one physics service server socket 
+	* connection valid. 
+	* 
+	* @return True if there is at least one physics service server valid
+	* socket connection
+	*/
 	inline static bool HasValidConnection() 
-		{ return ConnectionSocket != INVALID_SOCKET; }
+		{ return SocketConnectionsMap.Num() > 0; }
+
+	/** Getter to the current number of active physics services */
+	inline static int32 GetNumberOfPhysicsServices()
+		{ return SocketConnectionsMap.Num(); }
 
 private:
 	/** Starts up the winsock library. */
 	static bool StartupWinsock();
 
 	/** 
-	* Get the addrinfo to the localhost socket server as a TCP socket. 
+	* Get the addrinfo from the server as a TCP socket. 
+	* 
+	* @param ServerIpAddr The server's ip address to connect to
+	* @param ServerPort The server's port to connect to
+	* 
+	* @return The server's addrinfo
 	*/
-	static addrinfo* GetServerAddrInfo(const FString& SocketServerIpAddr);
+	static addrinfo* GetServerAddrInfo(const FString& ServerIpAddr,
+		const FString& ServerPort);
 
 	/** 
-	* Connects to a given addrinfo. This should be the localhost TCP socket
-	* addrinfo to connect to the localhost socket server.
+	* Get the socket connection by the server's id.
 	* 
-	* @param addrinfoToConnect The localhost's socket server addrinfo
+	* @param TargetServerId The server id to get the socket connection
+	* 
+	* @return The socket connection given the server's id
+	* 
+	* @note The SOCKET connection may be invalid if this server's id does not
+	* exists on the connection map
 	*/
-	static void ConnectSocketToLocalSocketServer(addrinfo* addrinfoToConnect);
+	static SOCKET GetSocketConnectionByServerId(const int32 TargetServerId);
+
+	/** 
+	* Connects to a given addrinfo. This should be the TCP socket addrinfo to 
+	* connect to the physics service server.
+	* 
+	* @param AddrinfoToConnect The physics service server addrinfo
+	* @param ServerId The server's id. Used to easily find the created physics
+	* service server on the SocketConnectionsMap
+	*/
+	static void ConnectToServer(addrinfo* AddrinfoToConnect,
+		const int32 ServerId);
 
 private:
-	/** The socket to connect to the physics service server. */
-	static SOCKET ConnectionSocket;
+	/**
+	* The sockets connection map. The key is the server's id and the value the
+	* socket connection itself.
+	*/
+	static TMap<int32, SOCKET> SocketConnectionsMap;
 };

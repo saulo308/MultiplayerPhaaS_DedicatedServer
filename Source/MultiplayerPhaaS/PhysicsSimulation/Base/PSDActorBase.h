@@ -19,6 +19,17 @@ class MULTIPLAYERPHAAS_API APSDActorBase : public AActor
 {
 	GENERATED_BODY()
 	
+public:
+	/** Getter to the physics service owner id */
+	UFUNCTION(BlueprintCallable)
+	int32 GetActorPhysicsServiceOwnerId()
+		{ return ActorPhysicsServiceOwnerId; }
+
+	/** Setter to the physics service owner id */
+	UFUNCTION(BlueprintCallable)
+	void SetActorPhysicsServiceOwnerId(const int32 NewPhysicsServiceOwnerId)
+		{ ActorPhysicsServiceOwnerId = NewPhysicsServiceOwnerId; }
+
 public:	
 	/** Sets default values for this actor's properties */
 	APSDActorBase();
@@ -71,4 +82,13 @@ public:
 	/** This actor's mesh component. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class UStaticMeshComponent* ActorMeshComponent = nullptr;
+
+private:
+	/** 
+	* The owning physics service ID. This represents the physics service that
+	* updates this PSDActor.
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, 
+		meta=(AllowPrivateAccess="true"))
+	int32 ActorPhysicsServiceOwnerId = 0;
 };

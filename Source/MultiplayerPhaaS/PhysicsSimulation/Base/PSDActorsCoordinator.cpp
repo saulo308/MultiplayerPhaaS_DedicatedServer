@@ -13,6 +13,8 @@
 #include <sstream>
 #include <chrono>
 
+const int32 DefaultServerId = 0;
+
 APSDActorsCoordinator::APSDActorsCoordinator()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -41,7 +43,7 @@ void APSDActorsCoordinator::Tick(float DeltaTime)
 }
 
 void APSDActorsCoordinator::StartPSDActorsSimulation
-	(const FString& SocketServerIpAddr)
+	(const TArray<FString>& SocketServerIpAddrList)
 {
 	MPHAAS_LOG_INFO(TEXT("Starting PSD actors simulation."));
 	
@@ -67,20 +69,56 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 		PSDActorMap.Add(i + 1, PSDActor);
 	}
 	
-	// Open Socket connection with the physics service server, given its IpAddr
-	const bool bWasOpenSocketSuccess =
-		FSocketClientProxy::OpenSocketConnectionToLocalhostServer
-		(SocketServerIpAddr);
+	int32 ServerId = 0;
+	int32 NumberOfOpenedServers = 0;
+	for (auto& FullServerIpAddr : SocketServerIpAddrList)
+	{
+		MPHAAS_LOG_INFO(TEXT("Parsing server addr: \"%s\""), 
+			*FullServerIpAddr);
 
-	// Check for errors on opening. 
-	// Any error should be shown in log
-	if (!bWasOpenSocketSuccess)
+		// Parse the server ip addr
+		TArray<FString> ParsedServerIpAddr;
+		FullServerIpAddr.ParseIntoArray(ParsedServerIpAddr, TEXT(":"));
+
+		if (ParsedServerIpAddr.Num() < 2)
+		{
+			MPHAAS_LOG_ERROR(TEXT("Could not parse server ip addr: \"%s\""),
+				*FullServerIpAddr);
+			continue;
+		}
+
+		// Get the server ip addr and port
+		const FString ServerIpAddr = ParsedServerIpAddr[0];
+		const FString ServerPort = ParsedServerIpAddr[1];
+
+		MPHAAS_LOG_INFO(TEXT("Server: \"%s:%s\""),
+			*ServerIpAddr, *ServerPort);
+
+
+		// Open Socket connection with the physics service server, given its
+		// IpAddr and port. The server id will also be set and incremented 
+		// here
+		const bool bWasOpenSocketSuccess =
+			FSocketClientProxy::OpenSocketConnectionToServer
+			(ServerIpAddr, ServerPort, ServerId++);
+
+		// If opened socket, count it so we can check if opened all socket
+		// connections succesfully
+		if (bWasOpenSocketSuccess)
+		{
+			NumberOfOpenedServers++;
+		}
+	}
+
+	// Check for errors on opening. If could not open all socket connections,
+	// return
+	if (NumberOfOpenedServers != SocketServerIpAddrList.Num())
 	{
 		MPHAAS_LOG_ERROR(TEXT("Socket openning error. Check logs."));
 		return;
 	}
 
-	MPHAAS_LOG_INFO(TEXT("Physics service server socket opened."));
+	MPHAAS_LOG_INFO(TEXT("Physics service servers opened."));
 
 	// Initialize physics world on the physics service
 	InitializePhysicsWorld();
@@ -102,9 +140,9 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 
 	bIsSimulating = false;
 	
-	// Close Socket connection with localhost server
+	// Close all socket connections
 	const bool bWaCloseSocketSuccess =
-		FSocketClientProxy::CloseSocketConnection();
+		FSocketClientProxy::CloseAllSocketConnections();
 
 	// Check for errors on opening. 
 	// Any error should be shown in log
@@ -119,10 +157,11 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 }
 
 void APSDActorsCoordinator::StartPSDActorsSimulationTest
-	(const FString& SocketServerIpAddr, float TestDurationInSeconds/*=30.f*/)
+	(const TArray<FString>& SocketServerIpAddrList, 
+	float TestDurationInSeconds/*=30.f*/)
 {
 	// Start the PSD actors simulation
-	StartPSDActorsSimulation(SocketServerIpAddr);
+	StartPSDActorsSimulation(SocketServerIpAddrList);
 
 	// Start timer to stop the simulation after 30 seconds passed
 	GetWorld()->GetTimerManager().SetTimer(PSDActorsTestTimerHandle, this,
@@ -132,37 +171,70 @@ void APSDActorsCoordinator::StartPSDActorsSimulationTest
 
 void APSDActorsCoordinator::InitializePhysicsWorld()
 {
-	// Start initialization message
-	FString InitializationMessage = "Init\n";
+	MPHAAS_LOG_INFO(TEXT("Initializing physics world."));
 
-	// Foreach PSD actor, get its StepPhysicsString
+	// Create the list of initialization messages
+	TArray<FString> InitializationMessageList = TArray<FString>();
+
+	// Get the number of physics services we have
+	const int32 NumberOfPhysicsServices = 
+		FSocketClientProxy::GetNumberOfPhysicsServices();
+
+	// Start each physics service, initialize with the initialization message
+	for (int32 PhysicsServiceId = 0; 
+		PhysicsServiceId < NumberOfPhysicsServices; PhysicsServiceId++)
+	{
+		InitializationMessageList.Add("Init\n");
+	}
+
+	// Foreach PSD actor, get its initialization info and append to the 
+	// corresponding message
 	for (auto& PSDActor : PSDActorMap)
 	{
 		// Get the current actor's location as a string
 		const auto CurrentActorLocation = 
 			PSDActor.Value->GetCurrentActorLocationAsString();
 
-		// Append the current actor location to the initialization message
-		InitializationMessage += FString::Printf(TEXT("%d;%s\n"),
+		// Get the current actor's owning server id
+		const auto CurrentActorOwningServerId =
+			PSDActor.Value->GetActorPhysicsServiceOwnerId();
+
+		// On the corresponding initialization message id on the list, append
+		// this actor's key as its ID on the first param (delimited by ";")
+		// and its given location after
+		InitializationMessageList[CurrentActorOwningServerId] += 
+			FString::Printf(TEXT("%d;%s\n"),
 			PSDActor.Key, *CurrentActorLocation);
 	}
 
-	// Append the end message token. This is needed as this may reach the
-	// server in separate messages, since it can be too big to send everything
-	// at once. The server will acknowledge the initialization message has 
-	// ended with this token
-	InitializationMessage += "EndMessage\n";
+	// For each initialization message:
+	for (int32 PhysicsServiceId = 0; 
+		PhysicsServiceId < NumberOfPhysicsServices; PhysicsServiceId++)
+	{
+		// Append the end message token. This is 
+		// needed as this may reach the server in separate messages, since it 
+		// can be too big to send everything at once. The server will 
+		// acknowledge the initialization message has ended with this token
+		InitializationMessageList[PhysicsServiceId] += "EndMessage\n";
 
-	// Convert message to std string
-	std::string MessageAsStdString(TCHAR_TO_UTF8(*InitializationMessage));
+		// Convert message to std string
+		std::string MessageAsStdString
+			(TCHAR_TO_UTF8(*InitializationMessageList[PhysicsServiceId]));
 
-	// Convert message to char*. This is needed as some UE converting has the
-	// limitation of 128 bytes, returning garbage when it's over it
-	char* MessageAsChar = &MessageAsStdString[0];
+		// Convert message to char*. This is needed as some UE converting has 
+		// the limitation of 128 bytes, returning garbage when it's over it
+		char* MessageAsChar = &MessageAsStdString[0];
+		
+		MPHAAS_LOG_INFO
+			(TEXT("Sending init message for service with id \"%d\". Message: %s"),
+			PhysicsServiceId, *InitializationMessageList[PhysicsServiceId]);
 
-	// Send message to initialize physics world on service
-	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-		(MessageAsChar);
+		// Send message to initialize physics world on service
+		const FString Response = FSocketClientProxy::SendMessageAndGetResponse
+			(MessageAsChar, PhysicsServiceId);
+
+		MPHAAS_LOG_INFO(TEXT("Physics service response: %s"), *Response);
+	}
 }
 
 void APSDActorsCoordinator::UpdatePSDActors()
@@ -183,95 +255,94 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		return;
 	}
 
-	// Get pre step physics time
-	std::chrono::steady_clock::time_point preStepPhysicsTime =
-		std::chrono::steady_clock::now();
-
 	// Construct message. This will be verified so service knows that we are
 	// making a "step physics" call
 	const char* StepPhysicsMessage = "Step";
 
-	MPHAAS_LOG_INFO(TEXT("Seinds request to physics service."));
+	// Get the number of physics services we have
+	const int32 NumberOfPhysicsServices =
+		FSocketClientProxy::GetNumberOfPhysicsServices();
 
-	// Request physics simulation on physics service bt passing the 
-	// world delta time
-	FString PhysicsSimulationResultStr =
-		FSocketClientProxy::SendMessageAndGetResponse(StepPhysicsMessage);
-
-	// Get post physics communication time
-	std::chrono::steady_clock::time_point postStepPhysicsTime =
-		std::chrono::steady_clock::now();
-
-	// Calculate the microsseconds all step physics simulation
-	// (considering communication )took
-	std::stringstream ss;
-	ss << std::chrono::duration_cast<std::chrono::microseconds>
-		(postStepPhysicsTime - preStepPhysicsTime).count();
-	const std::string elapsedTime = ss.str();
-
-	// Get the delta time in FString
-	const FString ElapsedPhysicsTimeMicroseconds =
-		UTF8_TO_TCHAR(elapsedTime.c_str());
-
-	MPHAAS_LOG_INFO(TEXT("Physics service response: %s"), 
-		*PhysicsSimulationResultStr);
-	MPHAAS_LOG_INFO(TEXT("=============="));
-
-	// Parse physics simulation result
-	// Each line will contain a result for a actor in terms of:
-	// "Id; posX; posY; posZ; rotX; rotY; rotZ"
-	TArray<FString> ParsedSimulationResult;
-	PhysicsSimulationResultStr.ParseIntoArrayLines(ParsedSimulationResult);
-
-	// Foreach line, parse its results (getting each actor pos)
-	for (auto& SimulationResultLine : ParsedSimulationResult)
+	// Foreach physics service, step physics
+	for (int32 PhysicsServiceId = 0;
+		PhysicsServiceId < NumberOfPhysicsServices; PhysicsServiceId++)
 	{
-		// Check if the line is just "MessageEnd" message
-		if (SimulationResultLine.Contains("MessageEnd"))
+		MPHAAS_LOG_INFO
+			(TEXT("Sending request to physics service with id: %d."),
+			PhysicsServiceId);
+
+		// Request physics simulation on physics service
+		FString PhysicsSimulationResultStr =
+			FSocketClientProxy::SendMessageAndGetResponse(StepPhysicsMessage,
+			PhysicsServiceId);
+
+		MPHAAS_LOG_INFO(TEXT("Physics service (id: %d) response: %s"),
+			NumberOfPhysicsServices, *PhysicsSimulationResultStr);
+
+		// Parse physics simulation result
+		// Each line will contain a result for a actor in terms of:
+		// "Id; posX; posY; posZ; rotX; rotY; rotZ"
+		TArray<FString> ParsedSimulationResult;
+		PhysicsSimulationResultStr.ParseIntoArrayLines(ParsedSimulationResult);
+
+		// Foreach line, parse its results (getting each actor pos)
+		for (auto& SimulationResultLine : ParsedSimulationResult)
 		{
-			continue;
+			// Check if the line is just "MessageEnd" message
+			if (SimulationResultLine.Contains("MessageEnd"))
+			{
+				continue;
+			}
+
+			// Parse the line with ";" delimit
+			TArray<FString> ParsedActorSimulationResult;
+			SimulationResultLine.ParseIntoArray(ParsedActorSimulationResult,
+				TEXT(";"), false);
+
+			// Check for errors
+			if (ParsedActorSimulationResult.Num() < 7)
+			{
+				MPHAAS_LOG_ERROR
+					(TEXT("Could not parse line \"%s\". Number of arguments is: %d"),
+					*SimulationResultLine, ParsedActorSimulationResult.Num());
+				return;
+			}
+
+			// Get the actor id to float
+			const uint32 ActorID =
+				FCString::Atoi(*ParsedActorSimulationResult[0]);
+
+			// Find the actor on the map
+			APSDActorBase* ActorToUpdate = PSDActorMap[ActorID];
+			if (!ActorToUpdate)
+			{
+				MPHAAS_LOG_ERROR(TEXT("Could not find actor with ID:%f"),
+					ActorID);
+				continue;
+			}
+
+			// Update PSD actor with the result
+			const float NewPosX =
+				FCString::Atof(*ParsedActorSimulationResult[1]);
+			const float NewPosY =
+				FCString::Atof(*ParsedActorSimulationResult[2]);
+			const float NewPosZ =
+				FCString::Atof(*ParsedActorSimulationResult[3]);
+			const FVector NewPos(NewPosX, NewPosY, NewPosZ);
+
+			ActorToUpdate->UpdatePositionAfterPhysicsSimulation(NewPos);
+
+			// Update PSD actor rotation with the result
+			const float NewRotX = 
+				FCString::Atof(*ParsedActorSimulationResult[4]);
+			const float NewRotY =
+				FCString::Atof(*ParsedActorSimulationResult[5]);
+			const float NewRotZ =
+				FCString::Atof(*ParsedActorSimulationResult[6]);
+			const FVector NewRotEuler(NewRotX, NewRotY, NewRotZ);
+
+			ActorToUpdate->UpdateRotationAfterPhysicsSimulation(NewRotEuler);
 		}
-
-		// Parse the line with ";" delimit
-		TArray<FString> ParsedActorSimulationResult;
-		SimulationResultLine.ParseIntoArray(ParsedActorSimulationResult,
-			TEXT(";"), false);
-
-		// Check for errors
-		if (ParsedActorSimulationResult.Num() < 7)
-		{
-			MPHAAS_LOG_ERROR
-				(TEXT("Could not parse line \"%s\". Number of arguments is: %d"),
-				*SimulationResultLine, ParsedActorSimulationResult.Num());
-			return;
-		}
-
-		// Get the actor id to float
-		const uint32 ActorID = FCString::Atoi(*ParsedActorSimulationResult[0]);
-
-		// Find the actor on the map
-		APSDActorBase* ActorToUpdate = PSDActorMap[ActorID];
-		if (!ActorToUpdate)
-		{
-			MPHAAS_LOG_ERROR(TEXT("Could not find actor with ID:%f"), ActorID);
-			continue;
-		}
-
-		// Update PSD actor with the result
-		const float NewPosX = FCString::Atof(*ParsedActorSimulationResult[1]);
-		const float NewPosY = FCString::Atof(*ParsedActorSimulationResult[2]);
-		const float NewPosZ = FCString::Atof(*ParsedActorSimulationResult[3]);
-		const FVector NewPos(NewPosX, NewPosY, NewPosZ);
-
-		ActorToUpdate->UpdatePositionAfterPhysicsSimulation(NewPos);
-
-		// Update PSD actor rotation with the result
-		const float NewRotX = FCString::Atof(*ParsedActorSimulationResult[4]);
-		const float NewRotY = FCString::Atof(*ParsedActorSimulationResult[5]);
-		const float NewRotZ = FCString::Atof(*ParsedActorSimulationResult[6]);
-		const FVector NewRotEuler(NewRotX, NewRotY, NewRotZ);
-
-		ActorToUpdate->UpdateRotationAfterPhysicsSimulation(NewRotEuler);
 	}
 }
 
@@ -328,7 +399,7 @@ void APSDActorsCoordinator::SpawnNewPSDSphere(const FVector NewSphereLocation)
 
 	// Send message to initialize physics world on service
 	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-		(MessageAsChar);
+		(MessageAsChar, DefaultServerId);
 
 	MPHAAS_LOG_INFO(TEXT("Add new sphere action response: %s"), *Response);
 }

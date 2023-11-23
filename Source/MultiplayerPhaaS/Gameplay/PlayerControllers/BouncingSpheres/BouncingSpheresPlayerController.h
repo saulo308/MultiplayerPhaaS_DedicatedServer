@@ -31,13 +31,15 @@ public:
 public:
 	/**
 	* Start simulation by requesting the PSDActorsCoordinator. The param should
-	* be set as the server ip address that is running the physics service.
+	* be set as the server ip addresses that are running physics services. The
+	* workload should be distributed on this set of physics services.
 	*
-	* @param ServerIpAddress The server ip address that contains the running
-	* physics service
+	* @param ServerIpAddressesList The server ip addresses list that are 
+	* running physics services
 	*/
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_StartPSDActorsSimulation(const FString& ServerIpAddress);
+	void Server_StartPSDActorsSimulation
+		(const TArray<FString>& ServerIpAddressesList);
 
 	/**
 	* Stops the current bouncing spheres simulation. This is done by executing
@@ -67,13 +69,14 @@ public:
 	* current set number of spheres and automatically starts/stops the
 	* simulation.
 	*
-	* @param ServerIpAddress The server ip address that contains the running
-	* physics service
+	* @param ServerIpAddressesList The server ip addresses list that are 
+	* running physics services
 	* @param NumberOfActorsToSpawn The number of PSD actors to spawn on the
 	* level
 	*/
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_StartPSDActorsTest(const FString& ServerIpAddress,
+	void Server_StartPSDActorsTest
+		(const TArray<FString>& ServerIpAddressesList,
 		const int32 NumberOfActorsToSpawn);
 
 	/** 

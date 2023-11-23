@@ -172,7 +172,7 @@ void ABouncingSpheresPlayerController::GetPSDActorsControllers()
 
 void ABouncingSpheresPlayerController::
 Server_StartPSDActorsSimulation_Implementation
-	(const FString& ServerIpAddress)
+	(const TArray<FString>& ServerIpAddressesList)
 {
 	// Get the PSDActors controllers (Coordinator and Spawner)
 	GetPSDActorsControllers();
@@ -181,7 +181,7 @@ Server_StartPSDActorsSimulation_Implementation
 	check(PSDActorCoordinator.Get());
 
 	// Request start simulation
-	PSDActorCoordinator->StartPSDActorsSimulation(ServerIpAddress);
+	PSDActorCoordinator->StartPSDActorsSimulation(ServerIpAddressesList);
 }
 
 void ABouncingSpheresPlayerController::
@@ -228,7 +228,8 @@ Server_DestroyAllPSDActors_Implementation()
 
 void ABouncingSpheresPlayerController::
 Server_StartPSDActorsTest_Implementation
-	(const FString& ServerIpAddress, const int32 NumberOfActorsToSpawn)
+	(const TArray<FString>& ServerIpAddressesList, 
+	const int32 NumberOfActorsToSpawn)
 {
 	// Get the PSDActors controllers (Coordinator and Spawner)
 	GetPSDActorsControllers();
@@ -243,7 +244,8 @@ Server_StartPSDActorsTest_Implementation
 	check(PSDActorCoordinator.Get());
 
 	// Start the PSD actors test (for 30 seconds)
-	PSDActorCoordinator->StartPSDActorsSimulationTest(ServerIpAddress, 30.f);
+	PSDActorCoordinator->StartPSDActorsSimulationTest(ServerIpAddressesList, 
+		30.f);
 }
 
 void ABouncingSpheresPlayerController::Server_SpawnNewPSDSphere_Implementation

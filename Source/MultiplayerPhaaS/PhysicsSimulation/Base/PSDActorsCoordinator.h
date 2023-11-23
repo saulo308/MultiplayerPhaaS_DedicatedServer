@@ -23,15 +23,19 @@ class MULTIPLAYERPHAAS_API APSDActorsCoordinator : public AActor
 public:
 	/**
 	* Starts the PSD actors simulation. First will open a connection with the
-	* physics service server (given its IpAddr), intialize the physics world
+	* physics service servers (given their IpAddr), intialize the physics world
 	* with all the PSD actors to simulate and set the flag "bIsSimulating" to
 	* start simulating on every tick.
 	* 
-	* @param SockerServerIpAddr The physics service ip address to connect and
+	* @param SockerServerIpAddr The physics service ip addresses to connect and
 	* request physics updates
+	* 
+	* @note That we receive a array of server ip as we may have multiple 
+	* physics services to distribute the workload
 	*/
 	UFUNCTION(BlueprintCallable)
-	void StartPSDActorsSimulation(const FString& SocketServerIpAddr);
+	void StartPSDActorsSimulation(const TArray<FString>& 
+		SocketServerIpAddrList);
 
 	/** 
 	* Stops the PSD actors simulation. Will set the flag and close the socket 
@@ -64,7 +68,7 @@ public:
 	* Starts a PSD actor simulation during 30 seconds. This should be used for
 	* testing-purposes only. 
 	* 
-	* @param SocketServerIpAddr The physics service ip address to connect and
+	* @param SocketServerIpAddr The physics service ip addresses to connect and
 	* request physics updates
 	* @param TestDurationInSeconds The test duration in seconds
 	* 
@@ -73,8 +77,8 @@ public:
 	* BouncingSpheres test map
 	*/
 	UFUNCTION(BlueprintCallable)
-	void StartPSDActorsSimulationTest(const FString& SocketServerIpAddr,
-		float TestDurationInSeconds = 30.f);
+	void StartPSDActorsSimulationTest(const TArray<FString>& 
+		SocketServerIpAddrList, float TestDurationInSeconds = 30.f);
 
 public:
 	/** Sets default values for this actor's properties */
