@@ -87,6 +87,9 @@ private:
 	/** 
 	* The owning physics service ID. This represents the physics service that
 	* updates this PSDActor.
+	*
+	* @note This Id will be overwritten if the PSDActor is inside a 
+	* PhysicsServiceRegion upon BeginPlay()
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, 
 		meta=(AllowPrivateAccess="true"))

@@ -27,8 +27,8 @@ public:
 	* with all the PSD actors to simulate and set the flag "bIsSimulating" to
 	* start simulating on every tick.
 	* 
-	* @param SockerServerIpAddr The physics service ip addresses to connect and
-	* request physics updates
+	* @param SocketServerIpAddrList The physics service ip addresses to connect 
+	* and request physics updates
 	* 
 	* @note That we receive a array of server ip as we may have multiple 
 	* physics services to distribute the workload
@@ -50,6 +50,10 @@ public:
 	* the new sphere body on the physics system through the socket proxy.
 	* 
 	* @param NewSphereLocation The sphere initial location to spawn
+	* 
+	* @note TODO This should reside inside the APhysicsServiceRegion, as we
+	* would spawn a new PSD sphere inside a given region (and thus, use its
+	* corresponding physics service id)
 	*/
 	UFUNCTION(BlueprintCallable)
 	void SpawnNewPSDSphere(const FVector NewSphereLocation);
@@ -68,8 +72,8 @@ public:
 	* Starts a PSD actor simulation during 30 seconds. This should be used for
 	* testing-purposes only. 
 	* 
-	* @param SocketServerIpAddr The physics service ip addresses to connect and
-	* request physics updates
+	* @param SocketServerIpAddrList The physics service ip addresses to connect 
+	* and request physics updates
 	* @param TestDurationInSeconds The test duration in seconds
 	* 
 	* @note This should not be used for game-purposes, as the physics should
@@ -114,11 +118,46 @@ private:
 
 private:
 	/** 
+	* Connects to a list of physics services. The server ip addresses are 
+	* given by the parameter. 
+	* 
+	* @param SocketServerIpAddrList The physics service ip addresses to connect 
+	* to
+	* 
+	* @return True if could connect to all server ip addresses. False otherwise
+	*/
+	bool ConnectToPhysicsServices
+		(const TArray<FString>& SocketServerIpAddrList);
+
+	/** 
+	* Gets all PSDActors that will be simulated. This will be given by the
+	* list of physics service regions
+	*/
+	void GetAllPSDActorsToSimulate();
+
+	/** Gets all the physics services regions on the world. */
+	void GetAllPhysicsServiceRegions();
+
+	/** 
+	* Gets the PSDActor spawner on the world. This is used to spawn PSDActors.
+	* 
+	* @note TODO This is only used to spawn PSD speheres. However, this should 
+	* be refactored to reside inside the "APhysicsServiceRegion".
+	* 
+	* @see SpawnNewPSDSphere
+	*/
+	void GetPSDActorsSpanwer();
+
+private:
+	/** 
 	* The list of PSD actors to simulate. The key is a unique Id to identify
 	* it on the physics service and the value is the PSD actor reference 
 	* itself.
 	*/
-	TMap<uint32, class APSDActorBase*> PSDActorMap;
+	TMap<uint32, class APSDActorBase*> PSDActorsToSimulateMap;
+
+	/** The list of physics service regions on the world. */
+	TArray<class APhysicsServiceRegion*> PhysicsServiceRegionList;
 
 	/** The PSDActors Spawner reference to request PSD Actors spawn */
 	class APSDActorsSpawner* PSDActorsSpanwer = nullptr;

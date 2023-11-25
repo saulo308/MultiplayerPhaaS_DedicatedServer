@@ -7,7 +7,6 @@
 #include "Components/Overlay.h"
 #include "Components/EditableTextBox.h"
 #include "Components/ScrollBox.h"
-#include "JoinServerListEntry.h"
 #include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
 
 void UMainMenuW::NativeConstruct()

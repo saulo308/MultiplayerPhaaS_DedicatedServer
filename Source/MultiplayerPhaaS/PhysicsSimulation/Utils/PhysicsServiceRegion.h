@@ -18,6 +18,16 @@ class MULTIPLAYERPHAAS_API APhysicsServiceRegion : public AActor
 {
 	GENERATED_BODY()
 	
+public:
+	/** 
+	* Get all the PSDActors inside this region. This will update the 
+	* "PSDActorsOnRegion" and return it.
+	* 
+	* @return The list of PSDActors inside this region
+	*/
+	UFUNCTION(BlueprintCallable)
+	TArray<class APSDActorBase*> GetAllPSDActorsOnRegion();
+
 public:	
 	/** Sets default values for this actor's properties */ 
 	APhysicsServiceRegion();
@@ -28,7 +38,35 @@ public:
 protected:
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
+
+private:
+	/** 
+	* Called when a new actor enters this region. Will only execute logic
+	* if the actor is type of "APSDActorBase".
+	*/
+	UFUNCTION()
+	void OnRegionEntry(UPrimitiveComponent* OverlappedComponent, 
+		AActor* OtherActor, UPrimitiveComponent* OtherComp, 
+		int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	/**
+	* Called when a new actor exits this region. Will only execute logic
+	* if the actor is type of "APSDActorBase".
+	*/
+	UFUNCTION()
+	void OnRegionExited(UPrimitiveComponent* OverlappedComponent, 
+		AActor* OtherActor, UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex);
 	
+public:
+	/** 
+	* The physics service id that owns this region. This means that the
+	* corresponding physics service with this id will be responsible for 
+	* updating the PSDActors inside this region.
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 RegionOwnerPhysicsServiceId = 0;
+
 private:
 	/** 
 	* The physics service region actor root component. Only used to easily
@@ -49,4 +87,8 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite,
 		meta = (AllowPrivateAccess = "true"))
 	class UBoxComponent* PhysicsServiceRegionBoxComponent = nullptr;
+
+private:
+	/** The list of PSDActors inside this region */
+	TArray<class APSDActorBase*> PSDActorsOnRegion;
 };

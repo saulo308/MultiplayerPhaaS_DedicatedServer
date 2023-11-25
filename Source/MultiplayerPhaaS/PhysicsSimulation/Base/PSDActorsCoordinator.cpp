@@ -2,6 +2,7 @@
 
 #include "PSDActorsCoordinator.h"
 #include "MultiplayerPhaaS/PhysicsSimulation/Utils/PSDActorsSpawner.h"
+#include "MultiplayerPhaaS/PhysicsSimulation/Utils/PhysicsServiceRegion.h"
 #include "MultiplayerPhaaS/ExternalCommunication/Sockets/SocketClientProxy.h"
 #include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
 #include "Kismet/GameplayStatics.h"
@@ -23,6 +24,9 @@ APSDActorsCoordinator::APSDActorsCoordinator()
 void APSDActorsCoordinator::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Get all physics service region on the map
+	GetAllPhysicsServiceRegions();
 }
 
 void APSDActorsCoordinator::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -46,75 +50,18 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 	(const TArray<FString>& SocketServerIpAddrList)
 {
 	MPHAAS_LOG_INFO(TEXT("Starting PSD actors simulation."));
+
+	// Get all PSDActors currently on the world to simulate
+	GetAllPSDActorsToSimulate();
+
+	// Connect to the physics services
+	const bool bWasConnectionSuccesful = 
+		ConnectToPhysicsServices(SocketServerIpAddrList);
 	
-	// Get all PSDActors
-	TArray<AActor*> FoundActors;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(),
-		APSDActorBase::StaticClass(), FoundActors);
-
-	// Foreach found actor, append to PSDActorsList
-	for (int i = 0; i < FoundActors.Num(); i++)
+	// Check for errors on opening. If could not open all connections, return
+	if (!bWasConnectionSuccesful)
 	{
-		// Cast to PSDActor to get a reference to it
-		auto PSDActor = Cast<APSDActorBase>(FoundActors[i]);
-		if (!PSDActor)
-		{
-			continue;
-		}
-
-		// Add to map that stores all the PSD actors to simulate.
-		// The key is the body id on the physics system. Starts at 1 as the
-		// flor on physics system has body id of 0
-		// The value is the reference to the actor
-		PSDActorMap.Add(i + 1, PSDActor);
-	}
-	
-	int32 ServerId = 0;
-	int32 NumberOfOpenedServers = 0;
-	for (auto& FullServerIpAddr : SocketServerIpAddrList)
-	{
-		MPHAAS_LOG_INFO(TEXT("Parsing server addr: \"%s\""), 
-			*FullServerIpAddr);
-
-		// Parse the server ip addr
-		TArray<FString> ParsedServerIpAddr;
-		FullServerIpAddr.ParseIntoArray(ParsedServerIpAddr, TEXT(":"));
-
-		if (ParsedServerIpAddr.Num() < 2)
-		{
-			MPHAAS_LOG_ERROR(TEXT("Could not parse server ip addr: \"%s\""),
-				*FullServerIpAddr);
-			continue;
-		}
-
-		// Get the server ip addr and port
-		const FString ServerIpAddr = ParsedServerIpAddr[0];
-		const FString ServerPort = ParsedServerIpAddr[1];
-
-		MPHAAS_LOG_INFO(TEXT("Server: \"%s:%s\""),
-			*ServerIpAddr, *ServerPort);
-
-
-		// Open Socket connection with the physics service server, given its
-		// IpAddr and port. The server id will also be set and incremented 
-		// here
-		const bool bWasOpenSocketSuccess =
-			FSocketClientProxy::OpenSocketConnectionToServer
-			(ServerIpAddr, ServerPort, ServerId++);
-
-		// If opened socket, count it so we can check if opened all socket
-		// connections succesfully
-		if (bWasOpenSocketSuccess)
-		{
-			NumberOfOpenedServers++;
-		}
-	}
-
-	// Check for errors on opening. If could not open all socket connections,
-	// return
-	if (NumberOfOpenedServers != SocketServerIpAddrList.Num())
-	{
-		MPHAAS_LOG_ERROR(TEXT("Socket openning error. Check logs."));
+		MPHAAS_LOG_ERROR(TEXT("Could not connect to all physics services. Check logs."));
 		return;
 	}
 
@@ -189,7 +136,7 @@ void APSDActorsCoordinator::InitializePhysicsWorld()
 
 	// Foreach PSD actor, get its initialization info and append to the 
 	// corresponding message
-	for (auto& PSDActor : PSDActorMap)
+	for (auto& PSDActor : PSDActorsToSimulateMap)
 	{
 		// Get the current actor's location as a string
 		const auto CurrentActorLocation = 
@@ -277,7 +224,7 @@ void APSDActorsCoordinator::UpdatePSDActors()
 			PhysicsServiceId);
 
 		MPHAAS_LOG_INFO(TEXT("Physics service (id: %d) response: %s"),
-			NumberOfPhysicsServices, *PhysicsSimulationResultStr);
+			PhysicsServiceId, *PhysicsSimulationResultStr);
 
 		// Parse physics simulation result
 		// Each line will contain a result for a actor in terms of:
@@ -313,7 +260,7 @@ void APSDActorsCoordinator::UpdatePSDActors()
 				FCString::Atoi(*ParsedActorSimulationResult[0]);
 
 			// Find the actor on the map
-			APSDActorBase* ActorToUpdate = PSDActorMap[ActorID];
+			APSDActorBase* ActorToUpdate = PSDActorsToSimulateMap[ActorID];
 			if (!ActorToUpdate)
 			{
 				MPHAAS_LOG_ERROR(TEXT("Could not find actor with ID:%f"),
@@ -351,21 +298,12 @@ void APSDActorsCoordinator::SpawnNewPSDSphere(const FVector NewSphereLocation)
 	// Check if we have a valid PSDActors spawner. If not, find it
 	if (!PSDActorsSpanwer)
 	{
-		// Get the PSDActorsSpawner
-		TArray<AActor*> FoundActors;
-		UGameplayStatics::GetAllActorsOfClass(GetWorld(),
-			APSDActorsSpawner::StaticClass(), FoundActors);
+		// Get the PSDActorSpawner in the world
+		GetPSDActorsSpanwer();
 
-		// Check if has found the PSDActorsSpawner
-		if (FoundActors.Num() < 1)
-		{
-			MPHAAS_LOG_ERROR
-				(TEXT("No PSDActorsSpawner found on the level to spawn new PSDSphere"));
-			return;
-		}
-
-		// Set the reference
-		PSDActorsSpanwer = Cast<APSDActorsSpawner>(FoundActors[0]);
+		// If still not valid, we have and error. There should be a
+		// PSDActorSpawner on the world
+		check(PSDActorsSpanwer);
 	}
 
 	// Spawn the new sphere
@@ -373,13 +311,13 @@ void APSDActorsCoordinator::SpawnNewPSDSphere(const FVector NewSphereLocation)
 		PSDActorsSpanwer->SpawnPSDActor(NewSphereLocation);
 
 	// Get the number of already spawned sphere
-	const auto NumberOfSpawnedSpheres = PSDActorMap.Num();
+	const auto NumberOfSpawnedSpheres = PSDActorsToSimulateMap.Num();
 
 	// The new sphere ID will be the NumberOfSpawnedSpheres + 1
 	const int32 NewSphereID = NumberOfSpawnedSpheres + 1;
 
 	// Add the sphere to the PSDActor map so it's Transform can be updated
-	PSDActorMap.Add(NewSphereID, SpawnedSphere);
+	PSDActorsToSimulateMap.Add(NewSphereID, SpawnedSphere);
 
 	// Create the message to send server
 	// The template is:
@@ -398,8 +336,133 @@ void APSDActorsCoordinator::SpawnNewPSDSphere(const FVector NewSphereLocation)
 	char* MessageAsChar = &MessageAsStdString[0];
 
 	// Send message to initialize physics world on service
+	// TODO this should receive a given physics service id
 	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
 		(MessageAsChar, DefaultServerId);
 
 	MPHAAS_LOG_INFO(TEXT("Add new sphere action response: %s"), *Response);
+}
+
+void APSDActorsCoordinator::GetAllPSDActorsToSimulate()
+{
+	// Foreach physics service region, get the PSDActors inside of it
+	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
+	{
+		// Get all PSDActors on it
+		const auto PSDActorsOnRegion =
+			PhysicsServiceRegion->GetAllPSDActorsOnRegion();
+
+		// Foreach found actor, append to PSDActorsList
+		for (int i = 0; i < PSDActorsOnRegion.Num(); i++)
+		{
+			// Cast to PSDActor to get a reference to it
+			auto PSDActor = Cast<APSDActorBase>(PSDActorsOnRegion[i]);
+			if (!PSDActor)
+			{
+				continue;
+			}
+
+			// Add to map that stores all the PSD actors to simulate.
+			// The key is the body id on the physics system. Starts at 1 as the
+			// flor on physics system has body id of 0
+			// The value is the reference to the actor
+			PSDActorsToSimulateMap.Add(i + 1, PSDActor);
+		}
+	}
+}
+
+bool APSDActorsCoordinator::ConnectToPhysicsServices
+	(const TArray<FString>& SocketServerIpAddrList)
+{
+	// Aux: The attributed server id once created and the number of current
+	// opened servers
+	int32 ServerId = 0;
+	int32 NumberOfOpenedServers = 0;
+
+	// Foreach received server id address:
+	for (auto& FullServerIpAddr : SocketServerIpAddrList)
+	{
+		MPHAAS_LOG_INFO(TEXT("Parsing server addr: \"%s\""),
+			*FullServerIpAddr);
+
+		// Parse the server ip addr
+		TArray<FString> ParsedServerIpAddr;
+		FullServerIpAddr.ParseIntoArray(ParsedServerIpAddr, TEXT(":"));
+
+		if (ParsedServerIpAddr.Num() < 2)
+		{
+			MPHAAS_LOG_ERROR(TEXT("Could not parse server ip addr: \"%s\""),
+				*FullServerIpAddr);
+			continue;
+		}
+
+		// Get the server ip addr and port
+		const FString ServerIpAddr = ParsedServerIpAddr[0];
+		const FString ServerPort = ParsedServerIpAddr[1];
+
+		MPHAAS_LOG_INFO(TEXT("Server: \"%s:%s\""),
+			*ServerIpAddr, *ServerPort);
+
+		// Open Socket connection with the physics service server, given its
+		// IpAddr and port. The server id will also be set and incremented 
+		// here so each server has its own id
+		const bool bWasOpenSocketSuccess =
+			FSocketClientProxy::OpenSocketConnectionToServer
+			(ServerIpAddr, ServerPort, ServerId++);
+
+		// If opened socket, count it so we can check if opened all socket
+		// connections succesfully
+		if (bWasOpenSocketSuccess)
+		{
+			NumberOfOpenedServers++;
+		}
+	}
+
+	// Check for errors on opening. If could not open all socket connections,
+	// return
+	if (NumberOfOpenedServers != SocketServerIpAddrList.Num())
+	{
+		MPHAAS_LOG_ERROR(TEXT("Socket openning error. Check logs."));
+		return false;
+	}
+
+	return true;
+}
+
+void APSDActorsCoordinator::GetAllPhysicsServiceRegions()
+{
+	// Get all actors from "APhysicsServiceRegion"
+	TArray<AActor*> FoundActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(),
+		APhysicsServiceRegion::StaticClass(), FoundActors);
+
+	// Foreach found actor, cast it to "APhysicsServiceRegion"
+	for (auto& FoundActor : FoundActors)
+	{
+		// Cast the found actor
+		const auto FoundPhysicsServiceRegion = 
+			Cast<APhysicsServiceRegion>(FoundActor);
+
+		// Add to list
+		PhysicsServiceRegionList.Add(FoundPhysicsServiceRegion);
+	}
+}
+
+void APSDActorsCoordinator::GetPSDActorsSpanwer()
+{
+	// Get the PSDActorsSpawner
+	TArray<AActor*> FoundActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(),
+		APSDActorsSpawner::StaticClass(), FoundActors);
+
+	// Check if has found the PSDActorsSpawner
+	if (FoundActors.Num() < 1)
+	{
+		MPHAAS_LOG_ERROR
+		(TEXT("No PSDActorsSpawner found on the level to spawn new PSDSphere"));
+		return;
+	}
+
+	// Set the reference
+	PSDActorsSpanwer = Cast<APSDActorsSpawner>(FoundActors[0]);
 }
