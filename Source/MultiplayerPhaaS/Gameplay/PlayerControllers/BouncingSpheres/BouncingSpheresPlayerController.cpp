@@ -258,7 +258,7 @@ void ABouncingSpheresPlayerController::Server_SpawnNewPSDSphere_Implementation
 	check(PSDActorCoordinator.Get());
 
 	// Request the PSDActor coordinator to spawn new PSD Sphere at location
-	PSDActorCoordinator->SpawnNewPSDSphere(SphereLocation);
+	//PSDActorCoordinator->SpawnNewPSDSphere(SphereLocation);
 }
 
 void ABouncingSpheresPlayerController::GetLifetimeReplicatedProps

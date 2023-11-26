@@ -44,20 +44,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void StopPSDActorsSimulation();
 
-	/**
-	* Spawns a new PSD Sphere. This will request the PSDActorsSpawner to 
-	* create a new PSDSphere as also requesting the physics service to add
-	* the new sphere body on the physics system through the socket proxy.
-	* 
-	* @param NewSphereLocation The sphere initial location to spawn
-	* 
-	* @note TODO This should reside inside the APhysicsServiceRegion, as we
-	* would spawn a new PSD sphere inside a given region (and thus, use its
-	* corresponding physics service id)
-	*/
-	UFUNCTION(BlueprintCallable)
-	void SpawnNewPSDSphere(const FVector NewSphereLocation);
-
 	/** 
 	* Getter to the flag "bIsSimulating" to indicate if the PSD actors are
 	* currently simulating physics.
@@ -65,7 +51,7 @@ public:
 	* @return True if PSD actors are simulating physics. False otherwise
 	*/
 	UFUNCTION(BlueprintCallable)
-	bool IsSimulating() { return bIsSimulating; }
+	bool IsSimulating() { return bIsSimulatingPhysics; }
 
 public:
 	/** 
@@ -166,7 +152,7 @@ private:
 	* Flag that indicates if this PSD actor coordinator is currently updating 
 	* the PSD actors
 	*/
-	bool bIsSimulating = false;
+	bool bIsSimulatingPhysics = false;
 
 private:
 	/**

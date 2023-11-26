@@ -17,16 +17,18 @@ UCLASS()
 class MULTIPLAYERPHAAS_API APhysicsServiceRegion : public AActor
 {
 	GENERATED_BODY()
-	
+
 public:
-	/** 
-	* Get all the PSDActors inside this region. This will update the 
-	* "PSDActorsOnRegion" and return it.
-	* 
-	* @return The list of PSDActors inside this region
-	*/
+
+	/**
+	* Spawns a new PSD Sphere. This will request the PSDActorsSpawner to
+	* create a new PSDSphere as also requesting the physics service to add
+	* the new sphere body on the physics system through the socket proxy.
+	*
+	* @param NewSphereLocation The sphere initial location to spawn
+	*//*
 	UFUNCTION(BlueprintCallable)
-	TArray<class APSDActorBase*> GetAllPSDActorsOnRegion();
+	void SpawnNewPSDSphere(const FVector NewSphereLocation);*/
 
 public:	
 	/** Sets default values for this actor's properties */ 
@@ -34,6 +36,16 @@ public:
 
 	/** Called every frame */
 	virtual void Tick(float DeltaTime) override;
+
+public:
+	/** */
+	void InitializePhysicsServiceRegion();
+
+	/** */
+	void UpdatePSDActorsOnRegion();
+
+	/** */
+	void ClearPhysicsServiceRegion();
 
 protected:
 	/** Called when the game starts or when spawned */
@@ -58,7 +70,29 @@ private:
 		AActor* OtherActor, UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex);
 	
+private:
+	/** */
+	bool ConnectToPhysicsService();
+
+	/** */
+	void PreparePhysicsServiceRegionForSimulation();
+
+	/**
+	* Get all the PSDActors inside this region. This will update the
+	* "PSDActorsOnRegion" and return it.
+	*
+	* @return The list of PSDActors inside this region
+	*/
+	TArray<class APSDActorBase*> GetAllPSDActorsOnRegion();
+
+	/** */
+	void InitializeRegionPhysicsWorld();
+
 public:
+	/** */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString PhysicsServiceIpAddr = FString();
+
 	/** 
 	* The physics service id that owns this region. This means that the
 	* corresponding physics service with this id will be responsible for 
@@ -89,6 +123,10 @@ private:
 	class UBoxComponent* PhysicsServiceRegionBoxComponent = nullptr;
 
 private:
-	/** The list of PSDActors inside this region */
-	TArray<class APSDActorBase*> PSDActorsOnRegion;
+	/**
+	* The list of PSD actors to simulate. The key is a unique Id to identify
+	* it on the physics service and the value is the PSD actor reference
+	* itself.
+	*/
+	TMap<uint32, class APSDActorBase*> PSDActorsToSimulateMap;
 };

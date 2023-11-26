@@ -152,37 +152,39 @@ void FSocketClientProxy::ConnectToServer(addrinfo* addrinfoToConnect,
     }
 }
 
-bool FSocketClientProxy::CloseAllSocketConnections()
+bool FSocketClientProxy::CloseSocketConnectionsToServerById
+    (const int32 TargetServerId)
 {
-    // Foreach socket connection
-    for (auto& TargetServerSocketConnection : SocketConnectionsMap)
+    // Find the socket connection with its ID
+    const auto TargetSocketConnection = 
+        SocketConnectionsMap.Find(TargetServerId);
+    
+    if (!TargetSocketConnection || *TargetSocketConnection == INVALID_SOCKET)
     {
-        // Check if connection socket is not already invalid
-        if (TargetServerSocketConnection.Value == INVALID_SOCKET)
-        {
-            return true;
-        }
-
-        // Shutdown the connection since no more data will be sent
-        const int ShutdownResult = shutdown(TargetServerSocketConnection.Value, 
-            SD_SEND);
-
-        // Check for shutdown errors
-        if (ShutdownResult == SOCKET_ERROR)
-        {
-            MPHAAS_LOG_ERROR(TEXT("Shutdown failed with error: %d"),
-                WSAGetLastError());
-        }
-
-        // Close socket
-        closesocket(TargetServerSocketConnection.Value);
+        MPHAAS_LOG_WARNING
+            (TEXT("Socket connection with ID(%d) does not exist to be closed."),
+            TargetServerId);
+        return true;
     }
+
+    // Shutdown the connection since no more data will be sent
+    const int ShutdownResult = shutdown(*TargetSocketConnection, SD_SEND);
+
+    // Check for shutdown errors
+    if (ShutdownResult == SOCKET_ERROR)
+    {
+        MPHAAS_LOG_ERROR(TEXT("Shutdown failed with error: %d"),
+            WSAGetLastError());
+    }
+
+    // Close socket
+    closesocket(*TargetSocketConnection);
 
     // Cleanup winsock
     WSACleanup();
 
-    // Clear the socket connections map
-    SocketConnectionsMap.Empty();
+    // Remove server from the connections map
+    SocketConnectionsMap.Remove(TargetServerId);
 
     return true;
 }

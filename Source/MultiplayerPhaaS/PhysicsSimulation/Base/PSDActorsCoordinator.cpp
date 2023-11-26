@@ -38,7 +38,7 @@ void APSDActorsCoordinator::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bIsSimulating && HasAuthority())
+	if (bIsSimulatingPhysics && HasAuthority())
 	{
 		// Update PSD actors by simulating physics on the service
 		// and parsing it's results with the new actor position
@@ -51,6 +51,13 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 {
 	MPHAAS_LOG_INFO(TEXT("Starting PSD actors simulation."));
 
+	// For each physics service region on the world, initialize it
+	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
+	{
+		PhysicsServiceRegion->InitializePhysicsServiceRegion();
+	}
+
+	/*
 	// Get all PSDActors currently on the world to simulate
 	GetAllPSDActorsToSimulate();
 
@@ -69,24 +76,33 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 
 	// Initialize physics world on the physics service
 	InitializePhysicsWorld();
-	
+	*/
+
 	// Set the flag to start simulating on each tick
-	bIsSimulating = true;
+	bIsSimulatingPhysics = true;
 
 	MPHAAS_LOG_INFO(TEXT("PSD actors started simulating."));
 }
 
 void APSDActorsCoordinator::StopPSDActorsSimulation()
 {
-	if (!bIsSimulating)
+	if (!bIsSimulatingPhysics)
 	{
 		return;
 	}
 
 	MPHAAS_LOG_INFO(TEXT("Stopping PSD actors simulation."));
-
-	bIsSimulating = false;
 	
+	// Set the flag to false to stop ticking PSDActors' update
+	bIsSimulatingPhysics = false;
+
+	// For each physics service region on the world, clear it
+	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
+	{
+		PhysicsServiceRegion->ClearPhysicsServiceRegion();
+	}
+
+	/*
 	// Close all socket connections
 	const bool bWaCloseSocketSuccess =
 		FSocketClientProxy::CloseAllSocketConnections();
@@ -100,7 +116,9 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 	}
 
 	MPHAAS_LOG_INFO(TEXT("Physics service service socket closed."));
-	MPHAAS_LOG_INFO(TEXT("PSD actors stopped simulating."));
+	*/
+
+	MPHAAS_LOG_INFO(TEXT("PSD actors simulation has been stopped."));
 }
 
 void APSDActorsCoordinator::StartPSDActorsSimulationTest
@@ -118,7 +136,7 @@ void APSDActorsCoordinator::StartPSDActorsSimulationTest
 
 void APSDActorsCoordinator::InitializePhysicsWorld()
 {
-	MPHAAS_LOG_INFO(TEXT("Initializing physics world."));
+	/*MPHAAS_LOG_INFO(TEXT("Initializing physics world."));
 
 	// Create the list of initialization messages
 	TArray<FString> InitializationMessageList = TArray<FString>();
@@ -182,18 +200,28 @@ void APSDActorsCoordinator::InitializePhysicsWorld()
 
 		MPHAAS_LOG_INFO(TEXT("Physics service response: %s"), *Response);
 	}
+	*/
 }
 
 void APSDActorsCoordinator::UpdatePSDActors()
 {
 	// Check if we are simulating
-	if (!bIsSimulating)
+	if (!bIsSimulatingPhysics)
 	{
 		return;
 	}
 
 	MPHAAS_LOG_INFO(TEXT("Updating PSD actors for this frame."));
 	
+	// Foreach physics service region on the world, update the PSDActors on it
+	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
+	{
+		PhysicsServiceRegion->UpdatePSDActorsOnRegion();
+	}
+
+	MPHAAS_LOG_INFO(TEXT("Physics updated for this frame."));
+
+	/*
 	// Check if we have a valid connection
 	if (!FSocketClientProxy::HasValidConnection())
 	{
@@ -291,60 +319,12 @@ void APSDActorsCoordinator::UpdatePSDActors()
 			ActorToUpdate->UpdateRotationAfterPhysicsSimulation(NewRotEuler);
 		}
 	}
-}
-
-void APSDActorsCoordinator::SpawnNewPSDSphere(const FVector NewSphereLocation)
-{
-	// Check if we have a valid PSDActors spawner. If not, find it
-	if (!PSDActorsSpanwer)
-	{
-		// Get the PSDActorSpawner in the world
-		GetPSDActorsSpanwer();
-
-		// If still not valid, we have and error. There should be a
-		// PSDActorSpawner on the world
-		check(PSDActorsSpanwer);
-	}
-
-	// Spawn the new sphere
-	const auto SpawnedSphere = 
-		PSDActorsSpanwer->SpawnPSDActor(NewSphereLocation);
-
-	// Get the number of already spawned sphere
-	const auto NumberOfSpawnedSpheres = PSDActorsToSimulateMap.Num();
-
-	// The new sphere ID will be the NumberOfSpawnedSpheres + 1
-	const int32 NewSphereID = NumberOfSpawnedSpheres + 1;
-
-	// Add the sphere to the PSDActor map so it's Transform can be updated
-	PSDActorsToSimulateMap.Add(NewSphereID, SpawnedSphere);
-
-	// Create the message to send server
-	// The template is:
-	// "AddSphereBody\n
-	// Id; posX; posY; posZ"
-	const FString SpawnNewPSDSphereMessage = 
-		FString::Printf(TEXT("AddSphereBody\n%d;%f;%f;%f"), NewSphereID, 
-		NewSphereLocation.X, NewSphereLocation.Y, 
-		NewSphereLocation.Z);
-
-	// Convert message to std string
-	std::string MessageAsStdString(TCHAR_TO_UTF8(*SpawnNewPSDSphereMessage));
-
-	// Convert message to char*. This is needed as some UE converting has the
-	// limitation of 128 bytes, returning garbage when it's over it
-	char* MessageAsChar = &MessageAsStdString[0];
-
-	// Send message to initialize physics world on service
-	// TODO this should receive a given physics service id
-	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-		(MessageAsChar, DefaultServerId);
-
-	MPHAAS_LOG_INFO(TEXT("Add new sphere action response: %s"), *Response);
+	*/
 }
 
 void APSDActorsCoordinator::GetAllPSDActorsToSimulate()
 {
+	/*
 	// Foreach physics service region, get the PSDActors inside of it
 	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
 	{
@@ -369,11 +349,13 @@ void APSDActorsCoordinator::GetAllPSDActorsToSimulate()
 			PSDActorsToSimulateMap.Add(i + 1, PSDActor);
 		}
 	}
+	*/
 }
 
 bool APSDActorsCoordinator::ConnectToPhysicsServices
 	(const TArray<FString>& SocketServerIpAddrList)
 {
+	/*
 	// Aux: The attributed server id once created and the number of current
 	// opened servers
 	int32 ServerId = 0;
@@ -424,7 +406,7 @@ bool APSDActorsCoordinator::ConnectToPhysicsServices
 	{
 		MPHAAS_LOG_ERROR(TEXT("Socket openning error. Check logs."));
 		return false;
-	}
+	}*/
 
 	return true;
 }
@@ -449,7 +431,7 @@ void APSDActorsCoordinator::GetAllPhysicsServiceRegions()
 }
 
 void APSDActorsCoordinator::GetPSDActorsSpanwer()
-{
+{/*
 	// Get the PSDActorsSpawner
 	TArray<AActor*> FoundActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(),
@@ -464,5 +446,5 @@ void APSDActorsCoordinator::GetPSDActorsSpanwer()
 	}
 
 	// Set the reference
-	PSDActorsSpanwer = Cast<APSDActorsSpawner>(FoundActors[0]);
+	PSDActorsSpanwer = Cast<APSDActorsSpawner>(FoundActors[0]);*/
 }

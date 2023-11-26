@@ -54,12 +54,8 @@ public:
 		(const FString& ServerIpAddr, const FString& ServerPort,
 		const int32 ServerId);
 
-	/** 
-	* Closes all the physics service servers socket connections
-	* 
-	* @return True if closing all socket connection was succesful
-	*/
-	static bool CloseAllSocketConnections();
+	/** */
+	static bool CloseSocketConnectionsToServerById(const int32 TargetServerId);
 
 	/** 
 	* Sends a message to the physics service server and awaits a response.
@@ -76,15 +72,22 @@ public:
 		const int32 ServerId);
 	
 public:
-	/** 
-	* Getter to know there is at least one physics service server socket 
-	* connection valid. 
-	* 
-	* @return True if there is at least one physics service server valid
-	* socket connection
-	*/
-	inline static bool HasValidConnection() 
-		{ return SocketConnectionsMap.Num() > 0; }
+	/** */
+	inline static bool IsConnectionValid(const int32 PhysicsServiceId)
+	{ 
+		// Get the target socket connection given its ID on the map
+		const auto TargetSocketConnection = 
+			SocketConnectionsMap.Find(PhysicsServiceId);
+
+		// If invalid, return false
+		if (TargetSocketConnection == nullptr ||
+			*TargetSocketConnection == INVALID_SOCKET)
+		{
+			return false;
+		}
+
+		return true; 
+	}
 
 	/** Getter to the current number of active physics services */
 	inline static int32 GetNumberOfPhysicsServices()

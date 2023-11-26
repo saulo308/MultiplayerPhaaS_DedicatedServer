@@ -22,13 +22,13 @@ class MULTIPLAYERPHAAS_API APSDActorBase : public AActor
 public:
 	/** Getter to the physics service owner id */
 	UFUNCTION(BlueprintCallable)
-	int32 GetActorPhysicsServiceOwnerId()
-		{ return ActorPhysicsServiceOwnerId; }
+	int32 GetActorOwnerPhysicsServiceId()
+		{ return ActorOwnerPhysicsServiceId; }
 
 	/** Setter to the physics service owner id */
 	UFUNCTION(BlueprintCallable)
-	void SetActorPhysicsServiceOwnerId(const int32 NewPhysicsServiceOwnerId)
-		{ ActorPhysicsServiceOwnerId = NewPhysicsServiceOwnerId; }
+	void SetActorOwnerPhysicsServiceId(const int32 NewOwnerPhysicsServiceId)
+		{ ActorOwnerPhysicsServiceId = NewOwnerPhysicsServiceId; }
 
 public:	
 	/** Sets default values for this actor's properties */
@@ -93,5 +93,5 @@ private:
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, 
 		meta=(AllowPrivateAccess="true"))
-	int32 ActorPhysicsServiceOwnerId = 0;
+	int32 ActorOwnerPhysicsServiceId = 0;
 };
