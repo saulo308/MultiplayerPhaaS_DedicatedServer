@@ -12,7 +12,7 @@
 #include "Net/UnrealNetwork.h"
 
 #include "Kismet/GameplayStatics.h"
-#include "MultiplayerPhaaS/PhysicsSimulation/Base/PSDActorsCoordinator.h"
+#include "MultiplayerPhaaS/PhysicsSimulation/Utils/PSDActorsCoordinator.h"
 #include "MultiplayerPhaaS/PhysicsSimulation/Utils/PSDActorsSpawner.h"
 
 #include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
