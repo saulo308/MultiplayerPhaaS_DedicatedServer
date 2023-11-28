@@ -89,13 +89,6 @@ protected:
 
 private:
 	/** 
-	* Initializes the physics world on the physics service. This will send
-	* a message containing all the PSD actors unique ID and Transform. This 
-	* will be the physics world's first state to begin simulating.
-	*/
-	void InitializePhysicsWorld();
-
-	/** 
 	* Updates the PSD actors Transform. This will request the physics service
 	* server physics update and await its response. Once returned, will parse 
 	* the result to update each PSD actor Transform.
@@ -103,36 +96,8 @@ private:
 	void UpdatePSDActors();
 
 private:
-	/** 
-	* Connects to a list of physics services. The server ip addresses are 
-	* given by the parameter. 
-	* 
-	* @param SocketServerIpAddrList The physics service ip addresses to connect 
-	* to
-	* 
-	* @return True if could connect to all server ip addresses. False otherwise
-	*/
-	bool ConnectToPhysicsServices
-		(const TArray<FString>& SocketServerIpAddrList);
-
-	/** 
-	* Gets all PSDActors that will be simulated. This will be given by the
-	* list of physics service regions
-	*/
-	void GetAllPSDActorsToSimulate();
-
 	/** Gets all the physics services regions on the world. */
 	void GetAllPhysicsServiceRegions();
-
-	/** 
-	* Gets the PSDActor spawner on the world. This is used to spawn PSDActors.
-	* 
-	* @note TODO This is only used to spawn PSD speheres. However, this should 
-	* be refactored to reside inside the "APhysicsServiceRegion".
-	* 
-	* @see SpawnNewPSDSphere
-	*/
-	void GetPSDActorsSpanwer();
 
 private:
 	/** 

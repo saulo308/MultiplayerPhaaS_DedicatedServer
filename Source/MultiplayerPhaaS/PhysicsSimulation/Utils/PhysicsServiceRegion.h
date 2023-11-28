@@ -38,13 +38,25 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 public:
-	/** */
+	/** 
+	* Intitializes the physics service region. This will connect to the physics
+	* service given the server ip address set on the properties. Once 
+	* connected, will initialize the physics world on the service. This will be
+	* done by getting all the PSD actors on this region.
+	*/
 	void InitializePhysicsServiceRegion();
 
-	/** */
+	/** 
+	* Updates all the PSDActors on this region by requesting a step physics
+	* on the connected physics service. The response will be used to update all
+	* the PSD actors on this region
+	*/
 	void UpdatePSDActorsOnRegion();
 
-	/** */
+	/**
+	* Clears this physics service region. This will disconnect from the physics
+	* service and destroy all the PSDActors on this region.
+	*/
 	void ClearPhysicsServiceRegion();
 
 protected:
@@ -71,10 +83,18 @@ private:
 		int32 OtherBodyIndex);
 	
 private:
-	/** */
+	/** 
+	* Connects to a physics service serve. The server to connect is given 
+	* by the server ip address on this actor's properties. 
+	*/
 	bool ConnectToPhysicsService();
 
-	/** */
+	/** 
+	* Prepares this physics service region for simulation. This will get all
+	* the PSDActors inside this region as the actors to simulate with the 
+	* physics service. This is also where we define the PSDActor's bodyid on
+	* the physics system, constructing a TMap.
+	*/
 	void PreparePhysicsServiceRegionForSimulation();
 
 	/**
@@ -85,11 +105,18 @@ private:
 	*/
 	TArray<class APSDActorBase*> GetAllPSDActorsOnRegion();
 
-	/** */
+	/** 
+	* Initializes this region's physics world. This will use all the PSDActors
+	* gotten on the preparation phase and send a init message to the physics
+	* service.
+	*/
 	void InitializeRegionPhysicsWorld();
 
 public:
-	/** */
+	/** 
+	* The physics service ip address to connect this region to. This service
+	* will be the one responsible for updating this region's physics actors
+	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString PhysicsServiceIpAddr = FString();
 

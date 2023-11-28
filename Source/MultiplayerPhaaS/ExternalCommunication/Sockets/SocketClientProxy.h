@@ -54,7 +54,13 @@ public:
 		(const FString& ServerIpAddr, const FString& ServerPort,
 		const int32 ServerId);
 
-	/** */
+	/** 
+	* Closes the socket connection with a server by its id.
+	* 
+	* @param TargetServerId The server's id to close connection
+	* 
+	* @return True if the closing was successful. False otherwise
+	*/
 	static bool CloseSocketConnectionsToServerById(const int32 TargetServerId);
 
 	/** 
@@ -72,7 +78,11 @@ public:
 		const int32 ServerId);
 	
 public:
-	/** */
+	/** 
+	* Check if a connection is valid with a given physics service id. 
+	* 
+	* @return True if the connection is valid. False otherwise
+	*/
 	inline static bool IsConnectionValid(const int32 PhysicsServiceId)
 	{ 
 		// Get the target socket connection given its ID on the map

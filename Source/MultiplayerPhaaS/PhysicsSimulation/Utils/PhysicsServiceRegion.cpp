@@ -181,6 +181,15 @@ void APhysicsServiceRegion::ClearPhysicsServiceRegion()
 	MPHAAS_LOG_INFO(TEXT("Clearing physics service region with ID: %d."),
 		RegionOwnerPhysicsServiceId);
 
+	// Foreach PSDActor on this region, destroy it
+	for (auto& PSDActor : PSDActorsToSimulateMap)
+	{
+		PSDActor.Value->Destroy();
+	}
+
+	// Clear the map
+	PSDActorsToSimulateMap.Empty();
+
 	// Close socket connection on this physics service (given its ID)
 	const bool bWasCloseSocketSuccess =
 		FSocketClientProxy::CloseSocketConnectionsToServerById
