@@ -6,6 +6,10 @@
 #include "GameFramework/Actor.h"
 #include "PSDActorBase.generated.h"
 
+/** */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActorExitedPhysicsRegion, 
+	APSDActorBase*, ExitedActor);
+
 /**
 * The base class for all Physics-Service-Drive (PSD) actors. This actor should
 * have its physics simulation driven by the physics service, and therefore, it
@@ -36,6 +40,13 @@ public:
 
 	/** Called every frame */
 	virtual void Tick(float DeltaTime) override;
+
+public:
+	/** */
+	virtual void OnEnteredPhysicsRegion();
+
+	/** */
+	virtual void OnExitedPhysicsRegion();
 
 public:
 	/** 
@@ -82,6 +93,10 @@ public:
 	/** This actor's mesh component. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class UStaticMeshComponent* ActorMeshComponent = nullptr;
+
+public:
+	/** */
+	FOnActorExitedPhysicsRegion OnActorExitedCurrentPhysicsRegion;
 
 private:
 	/** 

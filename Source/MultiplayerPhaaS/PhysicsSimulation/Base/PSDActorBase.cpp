@@ -57,3 +57,13 @@ void APSDActorBase::UpdateRotationAfterPhysicsSimulation
 	FQuat NewRotation = FQuat::MakeFromEuler(NewActorRotationEulerAngles);
 	SetActorRotation(NewRotation);
 }
+
+void APSDActorBase::OnEnteredPhysicsRegion()
+{
+
+}
+
+void APSDActorBase::OnExitedPhysicsRegion()
+{
+	OnActorExitedCurrentPhysicsRegion.Broadcast(this);
+}

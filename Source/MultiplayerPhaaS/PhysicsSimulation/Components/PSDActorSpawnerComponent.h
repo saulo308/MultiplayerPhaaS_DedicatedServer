@@ -14,6 +14,17 @@ class MULTIPLAYERPHAAS_API UPSDActorSpawnerComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
+public:
+	/**
+	* Spawns a PSDActor on a given location.
+	*
+	* @param SpawnLocation The location to spawn the PSD actor
+	*
+	* @return The spawned actor
+	*/
+	UFUNCTION(BlueprintCallable)
+	class APSDActorBase* SpawnPSDActor(const FVector SpawnLocation);
+
 public:	
 	/** Sets default values for this component's properties */
 	UPSDActorSpawnerComponent();
@@ -25,4 +36,10 @@ public:
 protected:
 	/** Called when the game starts */
 	virtual void BeginPlay() override;
+
+private:
+	/** The PSD actor reference to spawn on the area. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, 
+		meta=(AllowPrivateAccess="true"))
+	TSubclassOf<class APSDActorBase> PSDActorToSpawn;
 };

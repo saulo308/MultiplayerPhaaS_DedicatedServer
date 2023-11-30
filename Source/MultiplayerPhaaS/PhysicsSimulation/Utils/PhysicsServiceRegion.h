@@ -26,9 +26,14 @@ public:
 	* the new sphere body on the physics system through the socket proxy.
 	*
 	* @param NewSphereLocation The sphere initial location to spawn
-	*//*
+	*/
 	UFUNCTION(BlueprintCallable)
-	void SpawnNewPSDSphere(const FVector NewSphereLocation);*/
+	void SpawnNewPSDSphere(const FVector NewSphereLocation);
+
+	/** */
+	UFUNCTION(BlueprintCallable)
+	void RemovePSDActorFromPhysicsService
+		(class APSDActorBase* PSDActorToRemove);
 
 public:	
 	/** Sets default values for this actor's properties */ 
@@ -81,7 +86,11 @@ private:
 	void OnRegionExited(UPrimitiveComponent* OverlappedComponent, 
 		AActor* OtherActor, UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex);
-	
+
+	/** */
+	UFUNCTION()
+	void OnActorFullyExitedPhysicsRegion(APSDActorBase* ExitedActor);
+
 private:
 	/** 
 	* Connects to a physics service serve. The server to connect is given 
@@ -150,10 +159,18 @@ private:
 	class UBoxComponent* PhysicsServiceRegionBoxComponent = nullptr;
 
 private:
+	/** */
+	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UPSDActorSpawnerComponent* PSDActorSpawner = nullptr;
+
+private:
 	/**
 	* The list of PSD actors to simulate. The key is a unique Id to identify
 	* it on the physics service and the value is the PSD actor reference
 	* itself.
 	*/
-	TMap<uint32, class APSDActorBase*> PSDActorsToSimulateMap;
+	TMap<int32, class APSDActorBase*> PSDActorsToSimulateMap;
+
+	/** */
+	TArray<class APSDActorBase*> PendingMigrationPSDActors;
 };
