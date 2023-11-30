@@ -6,7 +6,10 @@
 #include "GameFramework/Actor.h"
 #include "PSDActorBase.generated.h"
 
-/** */
+/** 
+* Delegate called once this PSDActor has exited his owning physics service
+* region.
+*/
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActorExitedPhysicsRegion, 
 	APSDActorBase*, ExitedActor);
 
@@ -42,10 +45,13 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 public:
-	/** */
-	virtual void OnEnteredPhysicsRegion();
+	/** Called once this PSDActor enters a new physics service region. */
+	virtual void OnEnteredNewPhysicsRegion();
 
-	/** */
+	/** 
+	* Called once this PSDActor has existed his owning physics service 
+	* region. Will broadcast this event with the delegate.
+	*/
 	virtual void OnExitedPhysicsRegion();
 
 public:
@@ -95,7 +101,10 @@ public:
 	class UStaticMeshComponent* ActorMeshComponent = nullptr;
 
 public:
-	/** */
+	/** 
+	* Called once this actor has exited his current physics region. Useful
+	* to know if we should migrate this actor to a new physics service region
+	*/
 	FOnActorExitedPhysicsRegion OnActorExitedCurrentPhysicsRegion;
 
 private:

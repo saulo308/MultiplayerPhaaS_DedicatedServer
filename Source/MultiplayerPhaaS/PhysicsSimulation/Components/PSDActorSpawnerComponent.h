@@ -7,7 +7,11 @@
 #include "PSDActorSpawnerComponent.generated.h"
 
 /**
-*
+* The PSDActor spawner component. This is a ActorComponent used to spawn 
+* PSDActors. This will usually be used with a physics service region to spawn
+* PSDActors inside of it.
+* 
+* @see APhysicsServiceRegion
 */
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class MULTIPLAYERPHAAS_API UPSDActorSpawnerComponent : public UActorComponent

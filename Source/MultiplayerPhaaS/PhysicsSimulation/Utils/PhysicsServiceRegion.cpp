@@ -497,8 +497,10 @@ void APhysicsServiceRegion::OnRegionEntry
 
 	// Bind the actor's exited event on the callback
 	OtherActorAsPSDActor->OnActorExitedCurrentPhysicsRegion.AddDynamic(this,
-		&APhysicsServiceRegion::OnActorFullyExitedPhysicsRegion);
+		&APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion);
 
+	// Call the method to when he eneters a new physics service region
+	OtherActorAsPSDActor->OnEnteredNewPhysicsRegion();
 }
 
 void APhysicsServiceRegion::OnRegionExited
@@ -530,16 +532,17 @@ void APhysicsServiceRegion::OnRegionExited
 		PSDActorsToSimulateMap.Remove(*ActorKey);
 	}
 
-	// Call the method on the PSDActorBase
+	// Call the method on the PSDActorBase so he knows he has exited this
+	// physics service region
 	OtherActorAsPSDActor->OnExitedPhysicsRegion();
 }
 
-void APhysicsServiceRegion::OnActorFullyExitedPhysicsRegion(APSDActorBase*
+void APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion(APSDActorBase*
 	ExitedActor)
 {
 	// Remove the callback
 	ExitedActor->OnActorExitedCurrentPhysicsRegion.RemoveDynamic(this,
-		&APhysicsServiceRegion::OnActorFullyExitedPhysicsRegion);
+		&APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion);
 
 	// Check if this exited actor is on the pending migration list
 	if (!PendingMigrationPSDActors.Contains(ExitedActor))

@@ -19,7 +19,6 @@ class MULTIPLAYERPHAAS_API APhysicsServiceRegion : public AActor
 	GENERATED_BODY()
 
 public:
-
 	/**
 	* Spawns a new PSD Sphere. This will request the PSDActorsSpawner to
 	* create a new PSDSphere as also requesting the physics service to add
@@ -87,9 +86,16 @@ private:
 		AActor* OtherActor, UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex);
 
-	/** */
+	/** 
+	* Called when a actor has fully exited his own physics region. This is
+	* used when a PSDActor enters this physics region. We will only migrate him
+	* to this physics region once he has fully exited his own region
+	*
+	* @param ExitedActor The PSDActor that has fully exited his own physics 
+	* region
+	*/
 	UFUNCTION()
-	void OnActorFullyExitedPhysicsRegion(APSDActorBase* ExitedActor);
+	void OnActorFullyExitedOwnPhysicsRegion(APSDActorBase* ExitedActor);
 
 private:
 	/** 
@@ -159,7 +165,7 @@ private:
 	class UBoxComponent* PhysicsServiceRegionBoxComponent = nullptr;
 
 private:
-	/** */
+	/** The PSDActor spawner. Used to spawn PSDActors on this physics region */
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UPSDActorSpawnerComponent* PSDActorSpawner = nullptr;
 
@@ -171,6 +177,11 @@ private:
 	*/
 	TMap<int32, class APSDActorBase*> PSDActorsToSimulateMap;
 
-	/** */
+	/**
+	* The pending migration PSDActors list. This is used to add PSDActors that
+	* has entered this physics region. Once they do, they will start a 
+	* "pending migration" phase, which is only completed once the PSDActor
+	* fully exits his own phyiscs region.
+	*/
 	TArray<class APSDActorBase*> PendingMigrationPSDActors;
 };

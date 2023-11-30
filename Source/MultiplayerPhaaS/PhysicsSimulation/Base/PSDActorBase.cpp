@@ -58,7 +58,7 @@ void APSDActorBase::UpdateRotationAfterPhysicsSimulation
 	SetActorRotation(NewRotation);
 }
 
-void APSDActorBase::OnEnteredPhysicsRegion()
+void APSDActorBase::OnEnteredNewPhysicsRegion()
 {
 
 }
