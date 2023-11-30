@@ -247,6 +247,15 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion()
 		// Find the actor on the map
 		auto ActorToUpdate = PSDActorsToSimulateMap[ActorID];
 
+		// To be sure, check if the actor is valid
+		if (!ActorToUpdate)
+		{
+			MPHAAS_LOG_ERROR
+				(TEXT("Could not update actor with ID (%d) on physics service region (%d) as he is invalid."),
+				ActorID, RegionOwnerPhysicsServiceId);
+			continue;
+		}
+
 		// Update PSD actor with the result
 		const float NewPosX =
 			FCString::Atof(*ParsedActorSimulationResult[1]);
@@ -548,7 +557,7 @@ void APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion(APSDActorBase*
 	if (!PendingMigrationPSDActors.Contains(ExitedActor))
 	{
 		MPHAAS_LOG_WARNING
-		(TEXT("Actor was pending migration but is not on migration list: %s"),
+			(TEXT("Actor was pending migration but is not on migration list: %s"),
 			*ExitedActor->GetName());
 		return;
 	}
