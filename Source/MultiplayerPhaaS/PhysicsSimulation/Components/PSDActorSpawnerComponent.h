@@ -24,7 +24,7 @@ public:
 	*
 	* @param SpawnLocation The location to spawn the PSD actor
 	* @param RegionOwnerPhysicsServiceId The region's owner physics service Id
-	* that this PSDActor will spawn
+	* that this PSDActor will spawn on
 	*
 	* @return The spawned actor
 	*/

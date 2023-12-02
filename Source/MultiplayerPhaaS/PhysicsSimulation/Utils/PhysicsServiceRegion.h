@@ -29,7 +29,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SpawnNewPSDSphere(const FVector NewSphereLocation);
 
-	/** */
+	/** 
+	* Remvoes a PSDActor from the physics service. This will send a message to
+	* this region's owning physics service requesting the removal of a given
+	* PSDActor. 
+	* 
+	* @param PSDActorToRemove The PSDActor on this region to remove from the
+	* owning physics service
+	*/
 	UFUNCTION(BlueprintCallable)
 	void RemovePSDActorFromPhysicsService
 		(class APSDActorBase* PSDActorToRemove);
@@ -187,7 +194,9 @@ private:
 	TArray<class APSDActorBase*> PendingMigrationPSDActors;
 
 private:
-	/** */
+	/** 
+	* Flag that indicates if this physics service region is currently active.
+	* I.e. if it contains PSDActors and is updating them
+	*/
 	bool bIsPhysicsServiceRegionActive = false;
-
 };

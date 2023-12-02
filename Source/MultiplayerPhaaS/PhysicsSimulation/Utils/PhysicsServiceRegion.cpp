@@ -173,8 +173,8 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 
 void APhysicsServiceRegion::UpdatePSDActorsOnRegion()
 {
-	//MPHAAS_LOG_INFO(TEXT("Updating PSD actors on region with ID: %d."),
-		//RegionOwnerPhysicsServiceId);
+	MPHAAS_LOG_INFO(TEXT("Updating PSD actors on region with ID: %d."),
+		RegionOwnerPhysicsServiceId);
 
 	// Check if we have a valid connection with this region's physics service
 	// given its ID
@@ -325,7 +325,8 @@ bool APhysicsServiceRegion::ConnectToPhysicsService()
 
 void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 {
-	MPHAAS_LOG_INFO(TEXT("Spawning new PSD sphere at location %s on region with id: %d"),
+	MPHAAS_LOG_INFO
+		(TEXT("Spawning new PSD sphere at location (%s) on region with id: %d"),
 		*NewSphereLocation.ToString(), RegionOwnerPhysicsServiceId);
 
 	// Check if we have a valid PSDActors spawner. If not, find it
@@ -353,8 +354,8 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 	// Id; posX; posY; posZ"
 	const FString SpawnNewPSDSphereMessage =
 		FString::Printf(TEXT("AddSphereBody\n%d;%f;%f;%f"), NewSphereID,
-			NewSphereLocation.X, NewSphereLocation.Y,
-			NewSphereLocation.Z);
+		NewSphereLocation.X, NewSphereLocation.Y,
+		NewSphereLocation.Z);
 
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*SpawnNewPSDSphereMessage));
@@ -374,8 +375,9 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
 	(APSDActorBase* PSDActorToRemove)
 {
-	MPHAAS_LOG_INFO(TEXT("Removing PSDActor \"%s\""),
-		*PSDActorToRemove->GetName());
+	MPHAAS_LOG_INFO
+		(TEXT("Removing PSDActor \"%s\" from physics region (id: %d)"),
+		*PSDActorToRemove->GetName(), RegionOwnerPhysicsServiceId);
 
 	// Check if the PSDActor to remove is valid
 	if (!PSDActorToRemove)
@@ -400,8 +402,8 @@ void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
 	// The template is:
 	// "RemoveBody\n
 	// Id"
-	const FString RemoveBodyMessage =
-		FString::Printf(TEXT("RemoveBody\n%d"), *BodyIdToRemove);
+	const FString RemoveBodyMessage = FString::Printf(TEXT("RemoveBody\n%d"), 
+		*BodyIdToRemove);
 
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*RemoveBodyMessage));
@@ -420,7 +422,7 @@ void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
 
 void APhysicsServiceRegion::ClearPhysicsServiceRegion()
 {
-	MPHAAS_LOG_INFO(TEXT("Clearing physics service region with ID: %d."),
+	MPHAAS_LOG_INFO(TEXT("Clearing physics service region (id: %d)."),
 		RegionOwnerPhysicsServiceId);
 
 	// Set the flag to false to indicate this region is not active anymore
@@ -449,7 +451,7 @@ void APhysicsServiceRegion::ClearPhysicsServiceRegion()
 		return;
 	}
 
-	MPHAAS_LOG_INFO(TEXT("Physics service service (id:%d) socket closed."),
+	MPHAAS_LOG_INFO(TEXT("Physics service service (id: %d) socket closed."),
 		RegionOwnerPhysicsServiceId);
 }
 
