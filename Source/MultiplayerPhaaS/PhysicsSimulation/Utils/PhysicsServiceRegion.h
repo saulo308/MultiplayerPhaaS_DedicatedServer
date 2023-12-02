@@ -166,7 +166,8 @@ private:
 
 private:
 	/** The PSDActor spawner. Used to spawn PSDActors on this physics region */
-	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = 
+		(AllowPrivateAccess = "true"))
 	class UPSDActorSpawnerComponent* PSDActorSpawner = nullptr;
 
 private:
@@ -184,4 +185,9 @@ private:
 	* fully exits his own phyiscs region.
 	*/
 	TArray<class APSDActorBase*> PendingMigrationPSDActors;
+
+private:
+	/** */
+	bool bIsPhysicsServiceRegionActive = false;
+
 };

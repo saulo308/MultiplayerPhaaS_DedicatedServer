@@ -23,7 +23,7 @@ void UPSDActorSpawnerComponent::TickComponent(float DeltaTime,
 }
 
 APSDActorBase* UPSDActorSpawnerComponent::SpawnPSDActor
-	(const FVector SpawnLocation)
+	(const FVector SpawnLocation, const int32 RegionOwnerPhysicsServiceId)
 {
 	MPHAAS_LOG_INFO(TEXT("Spawning new PSDActor."));
 
@@ -32,7 +32,21 @@ APSDActorBase* UPSDActorSpawnerComponent::SpawnPSDActor
 	SpawnParams.SpawnCollisionHandlingOverride =
 		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	// Spawn PSD actor
-	return GetWorld()->SpawnActor<APSDActorBase>(PSDActorToSpawn,
-		SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+	// Set the spawn Transform
+	FTransform SpawnTransform = FTransform(FRotator::ZeroRotator, 
+		SpawnLocation, FVector::OneVector);
+
+	// Spawn the PSD actor
+	auto SpawnedActor = GetWorld()->SpawnActorDeferred<APSDActorBase>
+		(PSDActorToSpawn, SpawnTransform, nullptr, nullptr, 
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	
+	// Set the actor's owner physics service Id based on the region he is 
+	// spawning in
+	SpawnedActor->SetActorOwnerPhysicsServiceId(RegionOwnerPhysicsServiceId);
+
+	// Finish spawning the actor
+	SpawnedActor->FinishSpawning(SpawnTransform);
+
+	return SpawnedActor;
 }

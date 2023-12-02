@@ -79,6 +79,9 @@ void APhysicsServiceRegion::InitializePhysicsServiceRegion()
 	// Initialize physics world on the physics service
 	InitializeRegionPhysicsWorld();
 
+	// Set the flag to indicate that this physics service region is now active
+	bIsPhysicsServiceRegionActive = true;
+
 	MPHAAS_LOG_INFO(TEXT("Physics service region with ID %d is ready."),
 		RegionOwnerPhysicsServiceId);
 }
@@ -99,10 +102,9 @@ void APhysicsServiceRegion::PreparePhysicsServiceRegionForSimulation()
 		}
 
 		// Add to map that stores all the PSD actors to simulate.
-		// The key is the body id on the physics system. Starts at 1 as the
-		// flor on physics system has body id of 0
+		// The key is the body id on the physics system.
 		// The value is the reference to the actor
-		const uint32 NewPSDActorId = i + 1;
+		const uint32 NewPSDActorId = i;
 		PSDActorsToSimulateMap.Add(NewPSDActorId, PSDActor);
 	}
 }
@@ -158,21 +160,21 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 	char* MessageAsChar = &MessageAsStdString[0];
 
 	MPHAAS_LOG_INFO
-	(TEXT("Sending init message for service with id \"%d\". Message: %s"),
+		(TEXT("Sending init message for service with id \"%d\". Message: %s"),
 		RegionOwnerPhysicsServiceId, *InitializationMessage);
 
 	// Send message to initialize physics world on service
 	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
 	(MessageAsChar, RegionOwnerPhysicsServiceId);
 
-	MPHAAS_LOG_INFO(TEXT("Physics service with ID (%d) response: %s"),
-		RegionOwnerPhysicsServiceId, *Response);
+	//MPHAAS_LOG_INFO(TEXT("Physics service with ID (%d) response: %s"),
+		//RegionOwnerPhysicsServiceId, *Response);
 }
 
 void APhysicsServiceRegion::UpdatePSDActorsOnRegion()
 {
-	MPHAAS_LOG_INFO(TEXT("Updating PSD actors on region with ID: %d."),
-		RegionOwnerPhysicsServiceId);
+	//MPHAAS_LOG_INFO(TEXT("Updating PSD actors on region with ID: %d."),
+		//RegionOwnerPhysicsServiceId);
 
 	// Check if we have a valid connection with this region's physics service
 	// given its ID
@@ -188,17 +190,17 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion()
 	// making a "step physics" call
 	const char* StepPhysicsMessage = "Step";
 
-	MPHAAS_LOG_INFO
-		(TEXT("Sending \"Step\" request to physics service with id: %d."),
-		RegionOwnerPhysicsServiceId);
+	//MPHAAS_LOG_INFO
+		//(TEXT("Sending \"Step\" request to physics service with id: %d."),
+		//RegionOwnerPhysicsServiceId);
 
 	// Request physics simulation on physics service
 	FString PhysicsSimulationResultStr =
 		FSocketClientProxy::SendMessageAndGetResponse(StepPhysicsMessage,
 		RegionOwnerPhysicsServiceId);
 
-	MPHAAS_LOG_INFO(TEXT("Physics service (id: %d) response: %s"),
-		RegionOwnerPhysicsServiceId, *PhysicsSimulationResultStr);
+	//MPHAAS_LOG_INFO(TEXT("Physics service (id: %d) response: %s"),
+		//RegionOwnerPhysicsServiceId, *PhysicsSimulationResultStr);
 
 	// Parse physics simulation result
 	// Each line will contain a result for a actor in terms of:
@@ -224,7 +226,7 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion()
 		if (ParsedActorSimulationResult.Num() < 7)
 		{
 			MPHAAS_LOG_ERROR
-			(TEXT("Could not parse line \"%s\". Number of arguments is: %d"),
+				(TEXT("Could not parse line \"%s\". Number of arguments is: %d"),
 				*SimulationResultLine, ParsedActorSimulationResult.Num());
 			return;
 		}
@@ -323,22 +325,24 @@ bool APhysicsServiceRegion::ConnectToPhysicsService()
 
 void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 {
-	MPHAAS_LOG_INFO(TEXT("Spawning new PSD sphere at location %s"),
-		*NewSphereLocation.ToString());
+	MPHAAS_LOG_INFO(TEXT("Spawning new PSD sphere at location %s on region with id: %d"),
+		*NewSphereLocation.ToString(), RegionOwnerPhysicsServiceId);
 
 	// Check if we have a valid PSDActors spawner. If not, find it
 	check(PSDActorSpawner);
 
-	// Spawn the new sphere
-	const auto SpawnedSphere =
-		PSDActorSpawner->SpawnPSDActor(NewSphereLocation);
+	// Spawn the new sphere on the new sphere location and this region's owner
+	// physics service ID (The ID is needed to avoid the "OnRegionEntry" being
+	// called on the newly spawned actor).
+	const auto SpawnedSphere = PSDActorSpawner->SpawnPSDActor
+		(NewSphereLocation, RegionOwnerPhysicsServiceId);
 
 	// Get the number of already spawned sphere
 	const auto NumberOfSpawnedSpheres = PSDActorsToSimulateMap.Num();
 
 	// The new sphere ID will be the NumberOfSpawnedSpheres + 1
 	// TODO +2 here
-	const int32 NewSphereID = NumberOfSpawnedSpheres + 2;
+	const int32 NewSphereID = NumberOfSpawnedSpheres;
 
 	// Add the sphere to the PSDActor map so it's Transform can be updated
 	PSDActorsToSimulateMap.Add(NewSphereID, SpawnedSphere);
@@ -419,14 +423,18 @@ void APhysicsServiceRegion::ClearPhysicsServiceRegion()
 	MPHAAS_LOG_INFO(TEXT("Clearing physics service region with ID: %d."),
 		RegionOwnerPhysicsServiceId);
 
+	// Set the flag to false to indicate this region is not active anymore
+	bIsPhysicsServiceRegionActive = false;
+
 	// Foreach PSDActor on this region, destroy it
 	for (auto& PSDActor : PSDActorsToSimulateMap)
 	{
 		PSDActor.Value->Destroy();
 	}
 
-	// Clear the map
+	// Clear the map and list
 	PSDActorsToSimulateMap.Empty();
+	PendingMigrationPSDActors.Empty();
 
 	// Close socket connection on this physics service (given its ID)
 	const bool bWasCloseSocketSuccess =
@@ -477,6 +485,13 @@ void APhysicsServiceRegion::OnRegionEntry
 	UPrimitiveComponent* OtherComp,	int32 OtherBodyIndex, bool bFromSweep,
 	const FHitResult& SweepResult)
 {
+	// If physics service region is not active, just ignore (we may be clearing
+	// the physics region and removing all PSDActors from it)
+	if (!bIsPhysicsServiceRegionActive)
+	{
+		return;
+	}
+
 	// Get the other actor as PSDActor
 	auto OtherActorAsPSDActor = Cast<APSDActorBase>(OtherActor);
 
@@ -497,10 +512,11 @@ void APhysicsServiceRegion::OnRegionEntry
 		return;
 	}
 
-	MPHAAS_LOG_INFO
-		(TEXT("Actor \"%s\" entried region with physics service owning id: %d."),
-		*OtherActorAsPSDActor->GetName(), OtherActorPhysicsServiceId);
-
+	MPHAAS_LOG_WARNING
+		(TEXT("Actor \"%s\" entried region (id: %d) from region with physics service owning id: %d."),
+		*OtherActorAsPSDActor->GetName(), RegionOwnerPhysicsServiceId, 
+		OtherActorPhysicsServiceId);
+	
 	// Add the PSDActor to the pending migration list
 	PendingMigrationPSDActors.Add(OtherActorAsPSDActor);
 
@@ -516,6 +532,13 @@ void APhysicsServiceRegion::OnRegionExited
 	(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, 
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
+	// If physics service region is not active, just ignore (we may be clearing
+	// the physics region and removing all PSDActors from it)
+	if (!bIsPhysicsServiceRegionActive)
+	{
+		return;
+	}
+
 	// Get the other actor as PSDActor
 	auto OtherActorAsPSDActor = Cast<APSDActorBase>(OtherActor);
 
@@ -525,15 +548,27 @@ void APhysicsServiceRegion::OnRegionExited
 		return;
 	}
 
-	MPHAAS_LOG_INFO
+	// Get the OtherActor physics service ID
+	const auto OtherActorPhysicsServiceId =
+		OtherActorAsPSDActor->GetActorOwnerPhysicsServiceId();
+
+	// If this actor does not belong to this region, ignore it. We want only
+	// to process PSDActors inside this region
+	if (OtherActorPhysicsServiceId != RegionOwnerPhysicsServiceId)
+	{
+		return;
+	}
+
+	MPHAAS_LOG_WARNING
 		(TEXT("Actor \"%s\" exited region with physics service owning id: %d."),
 		*OtherActorAsPSDActor->GetName(), RegionOwnerPhysicsServiceId);
 
+	
 	// Remove this PSDActor from the phyiscs service as it is no longer
 	// responsible for simulating it
 	RemovePSDActorFromPhysicsService(OtherActorAsPSDActor);
 
-	// Get the actor's key on the simualtion map
+	// Get the actor's key on the simulation map
 	const auto ActorKey = PSDActorsToSimulateMap.FindKey(OtherActorAsPSDActor);
 	if (ActorKey)
 	{
@@ -549,6 +584,10 @@ void APhysicsServiceRegion::OnRegionExited
 void APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion(APSDActorBase*
 	ExitedActor)
 {
+	MPHAAS_LOG_INFO
+		(TEXT("Physics service region (id:%d) processed actor \"%s\" fully exiting previous region."),
+		RegionOwnerPhysicsServiceId, *ExitedActor->GetName());
+
 	// Remove the callback
 	ExitedActor->OnActorExitedCurrentPhysicsRegion.RemoveDynamic(this,
 		&APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion);

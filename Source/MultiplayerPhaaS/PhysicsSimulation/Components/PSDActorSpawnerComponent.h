@@ -23,11 +23,14 @@ public:
 	* Spawns a PSDActor on a given location.
 	*
 	* @param SpawnLocation The location to spawn the PSD actor
+	* @param RegionOwnerPhysicsServiceId The region's owner physics service Id
+	* that this PSDActor will spawn
 	*
 	* @return The spawned actor
 	*/
 	UFUNCTION(BlueprintCallable)
-	class APSDActorBase* SpawnPSDActor(const FVector SpawnLocation);
+	class APSDActorBase* SpawnPSDActor(const FVector SpawnLocation, 
+		const int32 RegionOwnerPhysicsServiceId);
 
 public:	
 	/** Sets default values for this component's properties */
@@ -43,7 +46,7 @@ protected:
 
 private:
 	/** The PSD actor reference to spawn on the area. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, 
 		meta=(AllowPrivateAccess="true"))
 	TSubclassOf<class APSDActorBase> PSDActorToSpawn;
 };
