@@ -102,10 +102,9 @@ void APhysicsServiceRegion::PreparePhysicsServiceRegionForSimulation()
 		}
 
 		// Add to map that stores all the PSD actors to simulate.
-		// The key is the body id on the physics system.
+		// The key is the PSDActor's UniqueID
 		// The value is the reference to the actor
-		const uint32 NewPSDActorId = i;
-		PSDActorsToSimulateMap.Add(NewPSDActorId, PSDActor);
+		PSDActorsToSimulateMap.Add(PSDActor->GetUniqueID(), PSDActor);
 	}
 }
 
@@ -341,9 +340,8 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 	// Get the number of already spawned sphere
 	const auto NumberOfSpawnedSpheres = PSDActorsToSimulateMap.Num();
 
-	// The new sphere ID will be the NumberOfSpawnedSpheres + 1
-	// TODO +2 here
-	const int32 NewSphereID = NumberOfSpawnedSpheres;
+	// The new sphere ID will be it's Unique ID
+	const int32 NewSphereID = SpawnedSphere->GetUniqueID();
 
 	// Add the sphere to the PSDActor map so it's Transform can be updated
 	PSDActorsToSimulateMap.Add(NewSphereID, SpawnedSphere);
