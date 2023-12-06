@@ -112,12 +112,11 @@ private:
 	bool ConnectToPhysicsService();
 
 	/** 
-	* Prepares this physics service region for simulation. This will get all
-	* the PSDActors inside this region as the actors to simulate with the 
-	* physics service. This is also where we define the PSDActor's bodyid on
-	* the physics system, constructing a TMap.
+	* Gets all the dynamic PSDActors on this region. Thus, this will get all
+	* the PSDActors inside this region that will be constantly be updated by 
+	* the physics service at each step.
 	*/
-	void PreparePhysicsServiceRegionForSimulation();
+	void GetAllDynamicPSDActorOnRegion();
 
 	/**
 	* Get all the PSDActors inside this region. This will update the
@@ -179,11 +178,11 @@ private:
 
 private:
 	/**
-	* The list of PSD actors to simulate. The key is a unique Id to identify
-	* it on the physics service and the value is the PSD actor reference
-	* itself.
+	* The list of dynamic PSDActors. Theses are the PSDActors that will be 
+	* updated on each physics step. The key is a unique Id to identify it on 
+	* the physics service and the value is the PSD actor reference itself.
 	*/
-	TMap<int32, class APSDActorBase*> PSDActorsToSimulateMap;
+	TMap<int32, class APSDActorBase*> DynamicPSDActorsOnRegion;
 
 	/**
 	* The pending migration PSDActors list. This is used to add PSDActors that

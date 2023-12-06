@@ -45,16 +45,18 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 public:
-	/** Called once this PSDActor enters a new physics service region. */
-	virtual void OnEnteredNewPhysicsRegion();
-
-	/** 
-	* Called once this PSDActor has existed his owning physics service 
-	* region. Will broadcast this event with the delegate.
+	/**
+	* Returns the physics service initialization string. This should return
+	* a string according to the initialization message template:
+	*
+	* "ActorTypeString; BodyID; InitialPosX; InitialPosY; InitialPosY\n"
+	*
+	* This method should be overwritten by each PSDActor
+	*
+	* @return The physics service initialization string for this PSDActor
 	*/
-	virtual void OnExitedPhysicsRegion();
-
-public:
+	virtual FString GetPhysicsServiceInitializationString();
+	
 	/** 
 	* Returns this actor's current location as a string with ";" delimiters.
 	* This should be used to initialize the physics world on the physics
@@ -63,7 +65,7 @@ public:
 	* 
 	* @return This actor's current lcoation as a string delimited by ";"
 	*/
-	FString GetCurrentActorLocationAsString();
+	virtual FString GetCurrentActorLocationAsString();
 
 public:
 	/**
@@ -87,6 +89,35 @@ public:
 	void UpdateRotationAfterPhysicsSimulation
 		(const FVector NewActorRotationEulerAngles);
 
+public:
+	/** Called once this PSDActor enters a new physics service region. */
+	virtual void OnEnteredNewPhysicsRegion();
+
+	/**
+	* Called once this PSDActor has existed his owning physics service
+	* region. Will broadcast this event with the delegate.
+	*/
+	virtual void OnExitedPhysicsRegion();
+
+public:
+	/** 
+	* Returns the PSDActor body id on the physics service. This should be 
+	* used to identify this PSDActor on the physics service. 
+	*
+	* @note This a unique ID
+	* 
+	* @return This PSDActor's body unique ID on the physics service
+	*/
+	uint32 GetPSDActorBodyIdOnPhysicsService() const
+		{ return PSDActorBodyIdOnPhysicsService; }
+
+	/** 
+	* Returns if this PSDActor is static (should move/updated or not)
+	*
+	* @return True if this PSDActor is static. False otherwise
+	*/
+	bool IsPSDActorStatic() const { return bIsPSDActorStatic; }
+
 protected:
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
@@ -107,7 +138,7 @@ public:
 	*/
 	FOnActorExitedPhysicsRegion OnActorExitedCurrentPhysicsRegion;
 
-private:
+protected:
 	/** 
 	* The owning physics service ID. This represents the physics service that
 	* updates this PSDActor.
@@ -118,4 +149,19 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, 
 		meta=(AllowPrivateAccess="true"))
 	int32 ActorOwnerPhysicsServiceId = 0;
+
+protected:
+	/** 
+	* The PSDActor's body unique ID on the physics service. Useful to 
+	* uniquely identify this PSDActor either on the world or on the physics 
+	* service
+	*/
+	uint32 PSDActorBodyIdOnPhysicsService = 0;
+
+	/** 
+	* Flag that indicates if this PSDActor is static. If false, the PSDActor
+	* will not be considered on each physics service step and will not be
+	* updated on each frame
+	*/
+	bool bIsPSDActorStatic = false;
 };

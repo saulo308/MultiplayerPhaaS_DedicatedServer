@@ -20,6 +20,9 @@ APSDActorBase::APSDActorBase()
 	// Set this actor to replicate as it will spawn on the server
 	bReplicates = true;
 	SetReplicateMovement(true);
+
+	// Set the actor's BodyID on the physics service as the UniqueID 
+	PSDActorBodyIdOnPhysicsService = GetUniqueID();
 }
 
 void APSDActorBase::BeginPlay()
@@ -30,6 +33,13 @@ void APSDActorBase::BeginPlay()
 void APSDActorBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
+
+FString APSDActorBase::GetPhysicsServiceInitializationString()
+{
+	MPHAAS_LOG_ERROR
+		(TEXT("Do not instantiate PSDActorBase directly. GetPhysicsServiceInitializationString() should be overwritten."));
+	return FString();
 }
 
 FString APSDActorBase::GetCurrentActorLocationAsString()

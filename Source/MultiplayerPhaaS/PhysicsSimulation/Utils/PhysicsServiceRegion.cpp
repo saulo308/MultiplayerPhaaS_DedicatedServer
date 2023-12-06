@@ -71,10 +71,9 @@ void APhysicsServiceRegion::InitializePhysicsServiceRegion()
 		return;
 	}
 
-	// Prepare the physics service region for simulation. This will get all the
-	// PSDActors on this region and fill the TMap with them, attributing a 
-	// unique ID for each of them
-	PreparePhysicsServiceRegionForSimulation();
+	// Get all the dynamic PSDActors on this region so they can be updated on
+	// each physics step
+	GetAllDynamicPSDActorOnRegion();
 
 	// Initialize physics world on the physics service
 	InitializeRegionPhysicsWorld();
@@ -86,7 +85,7 @@ void APhysicsServiceRegion::InitializePhysicsServiceRegion()
 		RegionOwnerPhysicsServiceId);
 }
 
-void APhysicsServiceRegion::PreparePhysicsServiceRegionForSimulation()
+void APhysicsServiceRegion::GetAllDynamicPSDActorOnRegion()
 {
 	// Get all PSDActors on this region
 	const auto PSDActorsOnRegion = GetAllPSDActorsOnRegion();
@@ -95,16 +94,26 @@ void APhysicsServiceRegion::PreparePhysicsServiceRegionForSimulation()
 	for (int i = 0; i < PSDActorsOnRegion.Num(); i++)
 	{
 		// Cast to PSDActor to get a reference to it
-		auto PSDActor = Cast<APSDActorBase>(PSDActorsOnRegion[i]);
+		const auto PSDActor = Cast<APSDActorBase>(PSDActorsOnRegion[i]);
 		if (!PSDActor)
 		{
 			continue;
 		}
 
-		// Add to map that stores all the PSD actors to simulate.
-		// The key is the PSDActor's UniqueID
+		// Check if the PSDActor is static
+		if (PSDActor->IsPSDActorStatic())
+		{
+			// If it is, just ignore it
+			continue;
+		}
+
+		// If not, it is a dynamic body.
+		// Add to map that stores all the dynamic PSD actors so they can be
+		// updated on each physics step
+		// The key is the PSDActor's body ID on the physics service
 		// The value is the reference to the actor
-		PSDActorsToSimulateMap.Add(PSDActor->GetUniqueID(), PSDActor);
+		DynamicPSDActorsOnRegion.Add
+			(PSDActor->GetPSDActorBodyIdOnPhysicsService(), PSDActor);
 	}
 }
 
@@ -118,31 +127,38 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 	// so physics service knows what this message is
 	FString InitializationMessage = "Init\n";
 
-	// Foreach PSD actor, get its initialization info and append to the 
-	// initialization message
-	for (auto& PSDActor : PSDActorsToSimulateMap)
-	{
-		// Get the current actor's location as a string
-		const auto CurrentActorLocation =
-			PSDActor.Value->GetCurrentActorLocationAsString();
+	// Get all PSDActors on this region
+	const auto PSDActorsOnRegion = GetAllPSDActorsOnRegion();
 
+	// Foreach PSD actor on the region, get its initialization info and append 
+	// to the initialization message
+	for (auto& PSDActor : PSDActorsOnRegion)
+	{
 		// Get the current actor's owning server id
 		const auto CurrentActorOwnerServerId =
-			PSDActor.Value->GetActorOwnerPhysicsServiceId();
+			PSDActor->GetActorOwnerPhysicsServiceId();
 
 		// Check if the PSDActor owning server id is the same as this region's
 		// physics service id. If not, something went wrong
 		if (CurrentActorOwnerServerId != RegionOwnerPhysicsServiceId)
 		{
 			MPHAAS_LOG_ERROR
-			(TEXT("PSDActor owning server id (%d) is not the same as the region he is in (region ID: %d)."),
+				(TEXT("PSDActor owning server id (%d) is not the same as the region he is in (region ID: %d)."),
 				CurrentActorOwnerServerId, RegionOwnerPhysicsServiceId);
 		}
 
-		// On the initialization message, append this actor's key as its ID on 
-		// the first param (delimited by ";") and its given location afterwards
-		InitializationMessage += FString::Printf(TEXT("%d;%s\n"),
-			PSDActor.Key, *CurrentActorLocation);
+		// Get the PSDActor physics service initialization string
+		const FString PSDActorInitializationMessage =
+			PSDActor->GetPhysicsServiceInitializationString();
+
+		// If empty, just ignore it. There must be a log with error
+		if (PSDActorInitializationMessage.IsEmpty())
+		{
+			continue;
+		}
+
+		// Append it to the final initialization message
+		InitializationMessage += PSDActorInitializationMessage;
 	}
 
 	// Append the end message token. This is 
@@ -164,7 +180,7 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 
 	// Send message to initialize physics world on service
 	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-	(MessageAsChar, RegionOwnerPhysicsServiceId);
+		(MessageAsChar, RegionOwnerPhysicsServiceId);
 
 	//MPHAAS_LOG_INFO(TEXT("Physics service with ID (%d) response: %s"),
 		//RegionOwnerPhysicsServiceId, *Response);
@@ -234,25 +250,25 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion()
 		const int32 ActorID =
 			FCString::Atoi(*ParsedActorSimulationResult[0]);
 
-		// Check if the actor exists on the map
-		const bool bDoesActorExistOnSimulationMap = 
-			PSDActorsToSimulateMap.Contains(ActorID);
-		if (!bDoesActorExistOnSimulationMap)
+		// Check if the actor exists on the dynamic PSDActors map
+		const bool bDoesActorExistOnMap = 
+			DynamicPSDActorsOnRegion.Contains(ActorID);
+		if (!bDoesActorExistOnMap)
 		{
 			MPHAAS_LOG_ERROR
-				(TEXT("Could not find actor with ID (%d) on physics service region (%d)"),
+				(TEXT("Could not find dynamic actor with ID (%d) on physics service region (id: %d)."),
 				ActorID, RegionOwnerPhysicsServiceId);
 			continue;
 		}
 
 		// Find the actor on the map
-		auto ActorToUpdate = PSDActorsToSimulateMap[ActorID];
+		auto ActorToUpdate = DynamicPSDActorsOnRegion[ActorID];
 
 		// To be sure, check if the actor is valid
 		if (!ActorToUpdate)
 		{
 			MPHAAS_LOG_ERROR
-				(TEXT("Could not update actor with ID (%d) on physics service region (%d) as he is invalid."),
+				(TEXT("Could not update dynamic actor with ID (%d) on physics service region (id: %d) as he is invalid."),
 				ActorID, RegionOwnerPhysicsServiceId);
 			continue;
 		}
@@ -337,14 +353,12 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 	const auto SpawnedSphere = PSDActorSpawner->SpawnPSDActor
 		(NewSphereLocation, RegionOwnerPhysicsServiceId);
 
-	// Get the number of already spawned sphere
-	const auto NumberOfSpawnedSpheres = PSDActorsToSimulateMap.Num();
-
 	// The new sphere ID will be it's Unique ID
 	const int32 NewSphereID = SpawnedSphere->GetUniqueID();
 
-	// Add the sphere to the PSDActor map so it's Transform can be updated
-	PSDActorsToSimulateMap.Add(NewSphereID, SpawnedSphere);
+	// Add the sphere to the dynamic PSDActors map so it's Transform can be 
+	// updated on next step
+	DynamicPSDActorsOnRegion.Add(NewSphereID, SpawnedSphere);
 
 	// Create the message to send server
 	// The template is:
@@ -385,23 +399,16 @@ void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
 		return;
 	}
 
-	// Get the actor's key on the simulation map as it works as the BodyID
-	// on the physics service
+	// Get the actor's body ID on the physics service 
 	const auto BodyIdToRemove = 
-		PSDActorsToSimulateMap.FindKey(PSDActorToRemove);
-	if (!BodyIdToRemove)
-	{
-		MPHAAS_LOG_ERROR
-			(TEXT("Could not find PSDActor BodyId to remove as it is not on simulation map."));
-		return;
-	}
+		PSDActorToRemove->GetPSDActorBodyIdOnPhysicsService();
 
-	// Create the message to send server
+	// Create the message to send to the physics service
 	// The template is:
 	// "RemoveBody\n
 	// Id"
 	const FString RemoveBodyMessage = FString::Printf(TEXT("RemoveBody\n%d"), 
-		*BodyIdToRemove);
+		BodyIdToRemove);
 
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*RemoveBodyMessage));
@@ -426,14 +433,17 @@ void APhysicsServiceRegion::ClearPhysicsServiceRegion()
 	// Set the flag to false to indicate this region is not active anymore
 	bIsPhysicsServiceRegionActive = false;
 
+	// Get all PSDActors on this region
+	auto PSDActorsOnRegion = GetAllPSDActorsOnRegion();
+
 	// Foreach PSDActor on this region, destroy it
-	for (auto& PSDActor : PSDActorsToSimulateMap)
+	for (auto& PSDActor : PSDActorsOnRegion)
 	{
-		PSDActor.Value->Destroy();
+		PSDActor->Destroy();
 	}
 
 	// Clear the map and list
-	PSDActorsToSimulateMap.Empty();
+	DynamicPSDActorsOnRegion.Empty();
 	PendingMigrationPSDActors.Empty();
 
 	// Close socket connection on this physics service (given its ID)
@@ -568,13 +578,13 @@ void APhysicsServiceRegion::OnRegionExited
 	// responsible for simulating it
 	RemovePSDActorFromPhysicsService(OtherActorAsPSDActor);
 
-	// Get the actor's key on the simulation map
-	const auto ActorKey = PSDActorsToSimulateMap.FindKey(OtherActorAsPSDActor);
-	if (ActorKey)
-	{
-		// Remove this PSDActor from the simulation map
-		PSDActorsToSimulateMap.Remove(*ActorKey);
-	}
+	// Get the actor's body id on physics service to find it on the dynamic 
+	// PSDActors map
+	const auto PSDActorBodyId = 
+		OtherActorAsPSDActor->GetPSDActorBodyIdOnPhysicsService();
+
+	// Remove this PSDActor from the dynamic PSDActors map
+	DynamicPSDActorsOnRegion.Remove(PSDActorBodyId);
 
 	// Call the method on the PSDActorBase so he knows he has exited this
 	// physics service region
