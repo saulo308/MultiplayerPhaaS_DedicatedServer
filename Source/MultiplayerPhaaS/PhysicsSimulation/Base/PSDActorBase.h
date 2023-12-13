@@ -112,6 +112,17 @@ public:
 		{ return PSDActorBodyIdOnPhysicsService; }
 
 	/** 
+	* Sets a new PSDActor body ID. This may be needed when spawning PSDActor
+	* clones. The clone should have the same ID as his replica. Thus, after
+	* being spawned, we set the PSDActor's body ID to the same as his replica.
+	* 
+	* @param NewPSDActorBodyIdOnPhysicsService The new PSDActor body ID
+	*/
+	void SetPSDActorBodyIdOnPhysicsService
+		(const uint32 NewPSDActorBodyIdOnPhysicsService) 
+		{ PSDActorBodyIdOnPhysicsService = NewPSDActorBodyIdOnPhysicsService; }
+
+	/** 
 	* Returns if this PSDActor is static (should move/updated or not)
 	*
 	* @return True if this PSDActor is static. False otherwise

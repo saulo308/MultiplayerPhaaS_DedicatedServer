@@ -255,9 +255,9 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion()
 			DynamicPSDActorsOnRegion.Contains(ActorID);
 		if (!bDoesActorExistOnMap)
 		{
-			MPHAAS_LOG_ERROR
-				(TEXT("Could not find dynamic actor with ID (%d) on physics service region (id: %d)."),
-				ActorID, RegionOwnerPhysicsServiceId);
+			//MPHAAS_LOG_ERROR
+				//(TEXT("Could not find dynamic actor with ID (%d) on physics service region (id: %d)."),
+				//ActorID, RegionOwnerPhysicsServiceId);
 			continue;
 		}
 
@@ -353,8 +353,9 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 	const auto SpawnedSphere = PSDActorSpawner->SpawnPSDActor
 		(NewSphereLocation, RegionOwnerPhysicsServiceId);
 
-	// The new sphere ID will be it's Unique ID
-	const int32 NewSphereID = SpawnedSphere->GetUniqueID();
+	// Get the new sphere ID as the PSDActor BodyID
+	const int32 NewSphereID =
+		SpawnedSphere->GetPSDActorBodyIdOnPhysicsService();
 
 	// Add the sphere to the dynamic PSDActors map so it's Transform can be 
 	// updated on next step
@@ -382,6 +383,80 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 		(MessageAsChar, RegionOwnerPhysicsServiceId);
 
 	MPHAAS_LOG_INFO(TEXT("Add new sphere action response: %s"), *Response);
+}
+
+void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
+	(const APSDActorBase* PSDActorToClone)
+{
+	MPHAAS_LOG_INFO
+		(TEXT("Adding PSDActor \"%s\" clone on region (id: %d)"),
+		*PSDActorToClone->GetName(), RegionOwnerPhysicsServiceId);
+
+	// Get the PSDActor ID to use it as the body ID on the physics service
+	const int32 PSDActorBodyID = 
+		PSDActorToClone->GetPSDActorBodyIdOnPhysicsService();
+
+	// Get the PSDActor to clone location
+	const FVector PSDActorCloneLocation = PSDActorToClone->GetActorLocation();
+
+	// Create the message to send server
+	// The template is:
+	// "AddSphereBody\n
+	// Id; posX; posY; posZ"
+	const FString SpawnNewPSDActorCloneMessage =
+		FString::Printf(TEXT("AddSphereBody\n%d;%f;%f;%f"), PSDActorBodyID,
+		PSDActorCloneLocation.X, PSDActorCloneLocation.Y,
+		PSDActorCloneLocation.Z);
+
+	// Convert message to std string
+	std::string MessageAsStdString
+		(TCHAR_TO_UTF8(*SpawnNewPSDActorCloneMessage));
+
+	// Convert message to char*. This is needed as some UE converting has the
+	// limitation of 128 bytes, returning garbage when it's over it
+	char* MessageAsChar = &MessageAsStdString[0];
+
+	// Send message to initialize physics world on service
+	// TODO this should receive a given physics service id
+	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
+		(MessageAsChar, RegionOwnerPhysicsServiceId);
+
+	MPHAAS_LOG_INFO(TEXT("Add new PSDActor clone action response: %s"), 
+		*Response);
+}
+
+void APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
+	(const APSDActorBase* TargetClonedPSDActor)
+{
+	MPHAAS_LOG_INFO
+		(TEXT("Spawning new PSDActor from clone \"%s\" on region (id: %d)"),
+		*TargetClonedPSDActor->GetName(), RegionOwnerPhysicsServiceId);
+
+	// Check if we have a valid PSDActors spawner. If not, find it
+	check(PSDActorSpawner);
+
+	// Get the PSDActor location to spawn
+	const FVector NewPSDActorLocation = 
+		TargetClonedPSDActor->GetActorLocation();
+
+	// Spawn the new sphere on the new sphere location and this region's owner
+	// physics service ID (The ID is needed to avoid the "OnRegionEntry" being
+	// called on the newly spawned actor).
+	const auto SpawnedPSDActor = PSDActorSpawner->SpawnPSDActor
+		(NewPSDActorLocation, RegionOwnerPhysicsServiceId);
+
+	// Get the cloned PSDActor body ID so the new PSDActor sphere has the
+	// same body ID as his clone
+	const auto ClonedPSDActorBodyID = 
+		TargetClonedPSDActor->GetPSDActorBodyIdOnPhysicsService();
+
+	// Override the spawned actor's PSDActor body ID on physics service to be
+	// the same as his clone
+	SpawnedPSDActor->SetActorOwnerPhysicsServiceId(ClonedPSDActorBodyID);
+
+	// Add the sphere to the dynamic PSDActors map so it's Transform can be 
+	// updated on next step
+	DynamicPSDActorsOnRegion.Add(ClonedPSDActorBodyID, SpawnedPSDActor);
 }
 
 void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
@@ -526,6 +601,9 @@ void APhysicsServiceRegion::OnRegionEntry
 		(TEXT("Actor \"%s\" entried region (id: %d) from region with physics service owning id: %d."),
 		*OtherActorAsPSDActor->GetName(), RegionOwnerPhysicsServiceId, 
 		OtherActorPhysicsServiceId);
+
+	// Add the PSDActor clone on this physics service
+	AddPSDActorCloneOnPhysicsService(OtherActorAsPSDActor);
 	
 	// Add the PSDActor to the pending migration list
 	PendingMigrationPSDActors.Add(OtherActorAsPSDActor);
@@ -572,7 +650,6 @@ void APhysicsServiceRegion::OnRegionExited
 	MPHAAS_LOG_WARNING
 		(TEXT("Actor \"%s\" exited region with physics service owning id: %d."),
 		*OtherActorAsPSDActor->GetName(), RegionOwnerPhysicsServiceId);
-
 	
 	// Remove this PSDActor from the phyiscs service as it is no longer
 	// responsible for simulating it
@@ -612,7 +689,9 @@ void APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion(APSDActorBase*
 	}
 
 	// Spawn a new PSD sphere on this region where the other actor is
-	SpawnNewPSDSphere(ExitedActor->GetActorLocation());
+	// SpawnNewPSDSphere(ExitedActor->GetActorLocation());
+
+	SpawnPSDActorFromPhysicsServiceClone(ExitedActor);
 
 	// Remove the actor from the pending migration list
 	PendingMigrationPSDActors.Remove(ExitedActor);
