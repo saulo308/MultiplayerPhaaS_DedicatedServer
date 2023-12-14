@@ -59,10 +59,14 @@ public:
 
 	/** 
 	* Updates all the PSDActors on this region by requesting a step physics
-	* on the connected physics service. The response will be used to update all
-	* the PSD actors on this region
+	* on the connected physics service. The param is the physics simulation
+	* result. This should be given, as the coordinator will thread the physics
+	* service update and syncronize the update
+	* 
+	* @param PhysicsSimulationResultStr The physics simulation response for 
+	* this given step to update the PSDActors on this physics region
 	*/
-	void UpdatePSDActorsOnRegion();
+	void UpdatePSDActorsOnRegion(const FString& PhysicsSimulationResultStr);
 
 	/**
 	* Clears this physics service region. This will disconnect from the physics

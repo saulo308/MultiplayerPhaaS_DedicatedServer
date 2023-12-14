@@ -5,9 +5,10 @@
 #include "MultiplayerPhaaS/PhysicsSimulation/Utils/PhysicsServiceRegion.h"
 #include "MultiplayerPhaaS/ExternalCommunication/Sockets/SocketClientProxy.h"
 #include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
-#include "Kismet/GameplayStatics.h"
 #include "MultiplayerPhaaS/PhysicsSimulation/Base/PSDActorBase.h"
+
 #include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
 
 #include <string>
 #include <iostream>
@@ -27,6 +28,31 @@ void APSDActorsCoordinator::BeginPlay()
 
 	// Get all physics service region on the map
 	GetAllPhysicsServiceRegions();
+
+	// Foreach physics service region, create a thread for its communication
+	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
+	{
+		// Get the physics region physics service id
+		const int32 RegionPhysicsServiceId =
+			PhysicsServiceRegion->RegionOwnerPhysicsServiceId;
+
+		// Create a new worker for this given region 
+		FSocketClientThreadWorker NewSocketClientWorker
+			(RegionPhysicsServiceId);
+
+		// Create the new thread for the worker
+		FRunnableThread* NewSocketClientThread = FRunnableThread::Create
+			(&NewSocketClientWorker, TEXT("SocketClientWorkerThread"));
+
+		// Create a new thread pair for the given work and thread
+		auto NewSocketClientThreadInfoPair = 
+			TPair<FSocketClientThreadWorker, FRunnableThread*>
+			(NewSocketClientWorker, NewSocketClientThread);
+
+		// Add the threading info the the list
+		SocketClientThreadsInfoList.Add(RegionPhysicsServiceId,
+			NewSocketClientThreadInfoPair);
+	}
 }
 
 void APSDActorsCoordinator::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -105,12 +131,64 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		return;
 	}
 
+	MPHAAS_LOG_WARNING(TEXT("Stepping: %d"), StepPhysicsCounter++);
 	MPHAAS_LOG_INFO(TEXT("Updating PSD actors for this frame."));
-	
-	// Foreach physics service region on the world, update the PSDActors on it
-	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
+
+	// For each socket client thread info, set the message to "step" and send
+	// for each physics service region (we know that each thread represents
+	// a given physics region)
+	for (auto& SocketClientThreadInfo : SocketClientThreadsInfoList)
 	{
-		PhysicsServiceRegion->UpdatePSDActorsOnRegion();
+		// Get the thread info and the thread worker
+		auto& ThreadInfoPair = SocketClientThreadInfo.Value;
+		auto& ThreadWoker = ThreadInfoPair.Key;
+
+		// Set the message to send on the worker
+		ThreadWoker.SetMessageToSend("Step");
+
+		// Toggle the run flag and run thread
+		ThreadInfoPair.Key.ToggleShouldRun();
+		ThreadInfoPair.Key.Run();
+	}
+
+	// For each socket client thread info, await its completion and get the
+	// physics service response so we can delegate the update to the 
+	// corresponding physics service
+	for (auto& SocketClientThreadInfo : SocketClientThreadsInfoList)
+	{
+		// Get the thread info
+		auto& ThreadInfoPair = SocketClientThreadInfo.Value;
+
+		// Get the worker and the corresponding thread
+		auto& ThreadWorker = ThreadInfoPair.Key;
+		auto& Thread = ThreadInfoPair.Value;
+
+		// Await the thread completion
+		Thread->WaitForCompletion();
+
+		// Once completed, get the response on the worker
+		FString Result = ThreadWorker.GetResponse();
+
+		// Get the region physics service id this thread represents so we can
+		// find and update it
+		const int32 RegionPhysicsServiceId = SocketClientThreadInfo.Key;
+		
+		// Foreach physics service region on the world, update the PSDActors 
+		// on it
+		for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
+		{
+			// Check if the physics service region is the same as the thread's
+			// corresponding ID
+			const bool bIsTargetPhysicsServiceRegion = 
+				(RegionPhysicsServiceId ==
+				PhysicsServiceRegion->RegionOwnerPhysicsServiceId);
+
+			// If found the physics service region, update it
+			if (bIsTargetPhysicsServiceRegion)
+			{
+				PhysicsServiceRegion->UpdatePSDActorsOnRegion(Result);
+			}
+		}
 	}
 
 	MPHAAS_LOG_INFO(TEXT("Physics updated for this frame."));

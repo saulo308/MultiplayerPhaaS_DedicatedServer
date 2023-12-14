@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "MultiplayerPhaaS/ExternalCommunication/Sockets/SocketClientThreadWorker.h"
 #include "PSDActorsCoordinator.generated.h"
 
 /** 
@@ -124,4 +125,14 @@ private:
 	* The TimerHandle that handles the PSD actors test (test-purposes only).
 	*/
 	FTimerHandle PSDActorsTestTimerHandle;
+
+	/** 
+	* The socket client threads info list. This contains all the threads and
+	* workers that implement each physics service region socket communication.
+	* This is used to thread the physics update
+	*/
+	TMap<int32, TPair<class FSocketClientThreadWorker, class FRunnableThread*>>
+		SocketClientThreadsInfoList;
+
+	uint32 StepPhysicsCounter = 0;
 };

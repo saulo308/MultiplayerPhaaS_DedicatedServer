@@ -62,8 +62,8 @@ void APhysicsServiceRegion::InitializePhysicsServiceRegion()
 		RegionOwnerPhysicsServiceId);
 
 	// Connect this region to his physics service (given IP addr and ID)
-	const bool bWasConnectionSuccesful = ConnectToPhysicsService();
-	if (!bWasConnectionSuccesful)
+	const bool bWasConnectionSuccessful = ConnectToPhysicsService();
+	if (!bWasConnectionSuccessful)
 	{
 		MPHAAS_LOG_ERROR
 		(TEXT("Physics service region with ID %d could not connect to the physics service server."),
@@ -186,33 +186,34 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 		//RegionOwnerPhysicsServiceId, *Response);
 }
 
-void APhysicsServiceRegion::UpdatePSDActorsOnRegion()
+void APhysicsServiceRegion::UpdatePSDActorsOnRegion
+	(const FString& PhysicsSimulationResultStr)
 {
 	MPHAAS_LOG_INFO(TEXT("Updating PSD actors on region with ID: %d."),
 		RegionOwnerPhysicsServiceId);
 
 	// Check if we have a valid connection with this region's physics service
 	// given its ID
-	if (!FSocketClientProxy::IsConnectionValid(RegionOwnerPhysicsServiceId))
-	{
-		MPHAAS_LOG_ERROR
-			(TEXT("Could not simulate as there's no valid connection for physics service region with ID: %d"),
-			RegionOwnerPhysicsServiceId);
-		return;
-	}
+	//if (!FSocketClientProxy::IsConnectionValid(RegionOwnerPhysicsServiceId))
+//	{
+	//	MPHAAS_LOG_ERROR
+			//(TEXT("Could not simulate as there's no valid connection for physics service region with ID: %d"),
+			//RegionOwnerPhysicsServiceId);
+		//return;
+	//}
 
 	// Construct message. This will be verified so service knows that we are
 	// making a "step physics" call
-	const char* StepPhysicsMessage = "Step";
+	//const char* StepPhysicsMessage = "Step";
 
 	//MPHAAS_LOG_INFO
 		//(TEXT("Sending \"Step\" request to physics service with id: %d."),
 		//RegionOwnerPhysicsServiceId);
 
 	// Request physics simulation on physics service
-	FString PhysicsSimulationResultStr =
-		FSocketClientProxy::SendMessageAndGetResponse(StepPhysicsMessage,
-		RegionOwnerPhysicsServiceId);
+	//FString PhysicsSimulationResultStr =
+		//FSocketClientProxy::SendMessageAndGetResponse(StepPhysicsMessage,
+		//RegionOwnerPhysicsServiceId);
 
 	//MPHAAS_LOG_INFO(TEXT("Physics service (id: %d) response: %s"),
 		//RegionOwnerPhysicsServiceId, *PhysicsSimulationResultStr);
@@ -388,7 +389,7 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 	(const APSDActorBase* PSDActorToClone)
 {
-	MPHAAS_LOG_INFO
+	MPHAAS_LOG_WARNING
 		(TEXT("Adding PSDActor \"%s\" clone on region (id: %d)"),
 		*PSDActorToClone->GetName(), RegionOwnerPhysicsServiceId);
 
@@ -428,9 +429,6 @@ void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 void APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
 	(const APSDActorBase* TargetClonedPSDActor)
 {
-	MPHAAS_LOG_INFO
-		(TEXT("Spawning new PSDActor from clone \"%s\" on region (id: %d)"),
-		*TargetClonedPSDActor->GetName(), RegionOwnerPhysicsServiceId);
 
 	// Check if we have a valid PSDActors spawner. If not, find it
 	check(PSDActorSpawner);
@@ -445,6 +443,11 @@ void APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
 	const auto SpawnedPSDActor = PSDActorSpawner->SpawnPSDActor
 		(NewPSDActorLocation, RegionOwnerPhysicsServiceId);
 
+	MPHAAS_LOG_WARNING(TEXT("Spawning new PSDActor (%s) from clone \"%s\" on region "
+		"(id: %d) at pos: %s"), *SpawnedPSDActor->GetName(), 
+		*TargetClonedPSDActor->GetName(), RegionOwnerPhysicsServiceId, 
+		*NewPSDActorLocation.ToString());
+
 	// Get the cloned PSDActor body ID so the new PSDActor sphere has the
 	// same body ID as his clone
 	const auto ClonedPSDActorBodyID = 
@@ -452,7 +455,7 @@ void APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
 
 	// Override the spawned actor's PSDActor body ID on physics service to be
 	// the same as his clone
-	SpawnedPSDActor->SetActorOwnerPhysicsServiceId(ClonedPSDActorBodyID);
+	SpawnedPSDActor->SetPSDActorBodyIdOnPhysicsService(ClonedPSDActorBodyID);
 
 	// Add the sphere to the dynamic PSDActors map so it's Transform can be 
 	// updated on next step
@@ -597,10 +600,11 @@ void APhysicsServiceRegion::OnRegionEntry
 		return;
 	}
 
-	MPHAAS_LOG_WARNING
-		(TEXT("Actor \"%s\" entried region (id: %d) from region with physics service owning id: %d."),
+	MPHAAS_LOG_WARNING(TEXT("Actor \"%s\" entried region (id: %d) from region "
+		"with physics service owning id: %d (pos: %s)"),
 		*OtherActorAsPSDActor->GetName(), RegionOwnerPhysicsServiceId, 
-		OtherActorPhysicsServiceId);
+		OtherActorPhysicsServiceId,
+		*OtherActorAsPSDActor->GetActorLocation().ToString());
 
 	// Add the PSDActor clone on this physics service
 	AddPSDActorCloneOnPhysicsService(OtherActorAsPSDActor);
