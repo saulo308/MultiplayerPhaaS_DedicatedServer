@@ -12,8 +12,8 @@
 #include "Net/UnrealNetwork.h"
 
 #include "Kismet/GameplayStatics.h"
-#include "PhysicsSimulation/Utils/PSDActorsCoordinator.h"
-#include "PhysicsSimulation/Utils/PSDActorsSpawner.h"
+#include "PhysicsSimulation/Utils/Actors/PSDActorsCoordinator.h"
+#include "PhysicsSimulation/Utils/Actors/PSDActorsSpawner.h"
 
 #include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
 

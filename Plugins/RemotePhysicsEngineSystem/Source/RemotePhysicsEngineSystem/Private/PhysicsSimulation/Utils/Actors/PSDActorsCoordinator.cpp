@@ -1,10 +1,10 @@
 // 2023 Copyright Saulo Soares, Brazil. All Rights Reserved.
 
-#include "PhysicsSimulation/Utils/PSDActorsCoordinator.h"
-#include "PhysicsSimulation/Utils/PSDActorsSpawner.h"
-#include "PhysicsSimulation/Utils/PhysicsServiceRegion.h"
+#include "PhysicsSimulation/Utils/Actors/PSDActorsCoordinator.h"
+#include "PhysicsSimulation/Utils/Actors/PSDActorsSpawner.h"
+#include "PhysicsSimulation/Utils/Actors/PhysicsServiceRegion.h"
 #include "ExternalCommunication/Sockets/SocketClientProxy.h"
-#include "PhysicsSimulation/Base/PSDActorBase.h"
+#include "PhysicsSimulation/PSDActors/Base/PSDActorBase.h"
 #include "RemotePhysicsEngineSystem/RemotePhysicsEngineSystemLogging.h"
 
 #include "Net/UnrealNetwork.h"

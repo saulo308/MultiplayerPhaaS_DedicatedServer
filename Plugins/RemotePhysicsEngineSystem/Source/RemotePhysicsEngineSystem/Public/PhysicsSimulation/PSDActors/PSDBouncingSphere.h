@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "PhysicsSimulation/Base/PSDActorBase.h"
+#include "PhysicsSimulation/PSDActors/Base/PSDActorBase.h"
 #include "PSDBouncingSphere.generated.h"
 
 /**

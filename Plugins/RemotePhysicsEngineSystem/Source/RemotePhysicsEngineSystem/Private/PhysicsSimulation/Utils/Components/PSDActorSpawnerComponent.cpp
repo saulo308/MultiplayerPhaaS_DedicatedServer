@@ -1,8 +1,8 @@
 // 2023 Copyright Saulo Soares, Brazil. All Rights Reserved.
 
 
-#include "PhysicsSimulation/Components/PSDActorSpawnerComponent.h"
-#include "PhysicsSimulation/Base/PSDActorBase.h"
+#include "PhysicsSimulation/Utils/Components/PSDActorSpawnerComponent.h"
+#include "PhysicsSimulation/PSDActors/Base/PSDActorBase.h"
 #include "RemotePhysicsEngineSystem/RemotePhysicsEngineSystemLogging.h"
 
 

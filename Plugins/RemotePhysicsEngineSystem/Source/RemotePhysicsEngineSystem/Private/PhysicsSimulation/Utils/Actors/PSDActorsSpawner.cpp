@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "PhysicsSimulation/Utils/PSDActorsSpawner.h"
-#include "PhysicsSimulation/Base/PSDActorBase.h"
+#include "PhysicsSimulation/Utils/Actors/PSDActorsSpawner.h"
+#include "PhysicsSimulation/PSDActors/Base/PSDActorBase.h"
 #include "RemotePhysicsEngineSystem/RemotePhysicsEngineSystemLogging.h"
 
 #include "Kismet/GameplayStatics.h"
