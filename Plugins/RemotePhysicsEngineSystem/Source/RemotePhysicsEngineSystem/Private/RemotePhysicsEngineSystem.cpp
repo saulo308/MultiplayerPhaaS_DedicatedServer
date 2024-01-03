@@ -1,8 +1,11 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "RemotePhysicsEngineSystem.h"
+#include "RemotePhysicsEngineSystem/RemotePhysicsEngineSystemLogging.h"
 
 #define LOCTEXT_NAMESPACE "FRemotePhysicsEngineSystemModule"
+
+DEFINE_LOG_CATEGORY(LogRPES);
 
 void FRemotePhysicsEngineSystemModule::StartupModule()
 {

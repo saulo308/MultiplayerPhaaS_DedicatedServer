@@ -17,6 +17,7 @@ public class MultiplayerPhaaS : ModuleRules
 			"UMG",
 			"OnlineSubsystem",
             "OnlineSubsystemSteam",
+			"RemotePhysicsEngineSystem"
         });
 
 		PrivateDependencyModuleNames.AddRange(new string[] 
