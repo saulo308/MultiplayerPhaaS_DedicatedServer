@@ -14,7 +14,8 @@
 * @see APhysicsServiceRegion
 */
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class REMOTEPHYSICSENGINESYSTEM_API UPSDActorSpawnerComponent : public UActorComponent
+class REMOTEPHYSICSENGINESYSTEM_API UPSDActorSpawnerComponent : 
+	public UActorComponent
 {
 	GENERATED_BODY()
 

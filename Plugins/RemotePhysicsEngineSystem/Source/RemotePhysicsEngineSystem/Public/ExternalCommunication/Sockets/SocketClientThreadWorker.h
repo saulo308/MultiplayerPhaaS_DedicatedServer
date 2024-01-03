@@ -13,7 +13,8 @@
 * 
 * @see FSocketClientProxy
 */
-class REMOTEPHYSICSENGINESYSTEM_API FSocketClientThreadWorker : public FRunnable
+class REMOTEPHYSICSENGINESYSTEM_API FSocketClientThreadWorker :
+    public FRunnable
 {
 public:
     /** 
