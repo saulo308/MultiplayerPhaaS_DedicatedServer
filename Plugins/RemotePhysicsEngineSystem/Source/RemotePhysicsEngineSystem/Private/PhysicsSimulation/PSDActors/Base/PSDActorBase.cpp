@@ -3,6 +3,8 @@
 #include "PhysicsSimulation/PSDActors/Base/PSDActorBase.h"
 #include "Components/StaticMeshComponent.h"
 #include "RemotePhysicsEngineSystem/RemotePhysicsEngineSystemLogging.h"
+#include "Components/TextRenderComponent.h"
+#include "Net/UnrealNetwork.h"
 
 APSDActorBase::APSDActorBase()
 {
@@ -17,6 +19,20 @@ APSDActorBase::APSDActorBase()
 		CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ActorMesh"));
 	ActorMeshComponent->SetupAttachment(ActorRootComponent);
 
+	// Creating the actor's body id text render component. This will show
+	// the actor's body id as 3D text
+	ActorBodyIdTextRenderComponent =
+		CreateDefaultSubobject<UTextRenderComponent>
+		(TEXT("ActorBodyIdTextRenderComponent"));
+	ActorBodyIdTextRenderComponent->SetupAttachment(ActorRootComponent);
+
+	// Creating the actor's region status text render component. This will show
+	// the actor's region statusas 3D text
+	ActorRegionStatusTextRender =
+		CreateDefaultSubobject<UTextRenderComponent>
+		(TEXT("ActorRegionStatusTextRender"));
+	ActorRegionStatusTextRender->SetupAttachment(ActorRootComponent);
+
 	// Set this actor to replicate as it will spawn on the server
 	bReplicates = true;
 	SetReplicateMovement(true);
@@ -28,18 +44,16 @@ APSDActorBase::APSDActorBase()
 void APSDActorBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Set the actor's body id on the text render component (called both
+	// on server and client)
+	ActorBodyIdTextRenderComponent->SetText
+		(FText::AsNumber(PSDActorBodyIdOnPhysicsService));
 }
 
 void APSDActorBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-}
-
-FString APSDActorBase::GetPhysicsServiceInitializationString()
-{
-	RPES_LOG_ERROR(TEXT("Do not instantiate PSDActorBase directly. \
-		GetPhysicsServiceInitializationString() should be overwritten."));
-	return FString();
 }
 
 FString APSDActorBase::GetCurrentActorLocationAsString()
@@ -50,30 +64,106 @@ FString APSDActorBase::GetCurrentActorLocationAsString()
 	// Parse it into a string with ";" delimiters
 	const FString StepPhysicsString =
 		FString::Printf(TEXT("%f;%f;%f"), ActorPos.X, ActorPos.Y,
-		ActorPos.Z);
+			ActorPos.Z);
 
 	return StepPhysicsString;
 }
 
-void APSDActorBase::UpdatePositionAfterPhysicsSimulation
-	(const FVector NewActorPosition)
+void APSDActorBase::GetLifetimeReplicatedProps
+	(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	SetActorLocation(NewActorPosition);
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(APSDActorBase, ActorOwnerPhysicsServiceId);
+	DOREPLIFETIME(APSDActorBase, CurrentPSDActorPhysicsRegionStatus);
+}
+
+FString APSDActorBase::GetPhysicsServiceInitializationString()
+{
+	RPES_LOG_ERROR(TEXT("Do not instantiate PSDActorBase directly. \
+		GetPhysicsServiceInitializationString() should be overwritten."));
+	return FString();
+}
+
+void APSDActorBase::UpdatePositionAfterPhysicsSimulation
+	(const FVector& NewActorPosition)
+{
+	// If on server, update it
+	if (HasAuthority())
+	{
+		SetActorLocation(NewActorPosition);
+	}
 }
 
 void APSDActorBase::UpdateRotationAfterPhysicsSimulation
-	(const FVector NewActorRotationEulerAngles)
+	(const FVector& NewActorRotationEulerAngles)
 {
-	FQuat NewRotation = FQuat::MakeFromEuler(NewActorRotationEulerAngles);
-	SetActorRotation(NewRotation);
+	// If on server, update it
+	if (HasAuthority())
+	{
+		FQuat NewRotation = FQuat::MakeFromEuler(NewActorRotationEulerAngles);
+		SetActorRotation(NewRotation);
+	}
+}
+
+void APSDActorBase::UpdatePSDActorStatusOnRegion
+	(EPSDActorPhysicsRegionStatus NewPhysicsRegionStatus)
+{
+	// If on server, update it
+	if (HasAuthority())
+	{
+		RPES_LOG_INFO(TEXT("Updating PSDActor's (BodyId: %d) region status \
+			on server."), PSDActorBodyIdOnPhysicsService);
+			
+		// Update the current PSDActor physics region status
+		CurrentPSDActorPhysicsRegionStatus = NewPhysicsRegionStatus;
+	}
 }
 
 void APSDActorBase::OnEnteredNewPhysicsRegion()
 {
-
 }
 
 void APSDActorBase::OnExitedPhysicsRegion()
 {
 	OnActorExitedCurrentPhysicsRegion.Broadcast(this);
+}
+
+void APSDActorBase::OnRep_PhysicsRegionStatusUpdated()
+{
+	RPES_LOG_INFO(TEXT("New status of body (id: %d) is \"%s\"."),
+		PSDActorBodyIdOnPhysicsService,
+		*UEnum::GetValueAsString(CurrentPSDActorPhysicsRegionStatus));
+
+	// Switch the enum and set the new physics region status string
+	FString NewPhysicsRegionStatusAsString = FString();
+	switch (CurrentPSDActorPhysicsRegionStatus)
+	{
+		case EPSDActorPhysicsRegionStatus::InsideRegion:
+			NewPhysicsRegionStatusAsString = "InsideRegion";
+			break;
+		case EPSDActorPhysicsRegionStatus::SharedRegion:
+			NewPhysicsRegionStatusAsString = "SharedRegion";
+			break;
+		case EPSDActorPhysicsRegionStatus::NoRegion:
+			NewPhysicsRegionStatusAsString = "NoRegion";
+			break;
+		default:
+			break;
+	}
+
+	// Update the text render component text
+	ActorRegionStatusTextRender->SetText
+		(FText::FromString(*NewPhysicsRegionStatusAsString));
+}
+
+void APSDActorBase::SetPSDActorBodyIdOnPhysicsService
+	(uint32 NewPSDActorBodyIdOnPhysicsService)
+{
+	// Set the new PSDActor body id
+	PSDActorBodyIdOnPhysicsService = NewPSDActorBodyIdOnPhysicsService;
+
+	// Update the text render component
+	ActorBodyIdTextRenderComponent->SetText
+		(FText::AsNumber(PSDActorBodyIdOnPhysicsService));
 }

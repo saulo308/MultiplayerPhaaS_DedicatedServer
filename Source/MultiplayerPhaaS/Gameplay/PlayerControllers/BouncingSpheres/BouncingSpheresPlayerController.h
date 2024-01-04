@@ -25,7 +25,7 @@ public:
 	* otherwise
 	*/
 	UFUNCTION(BlueprintCallable)
-	bool IsBouncingSpheresSimulationActive()
+	bool IsBouncingSpheresSimulationActive() const
 		{ return bIsBouncingSpheresSimulationActive; }
 
 public:

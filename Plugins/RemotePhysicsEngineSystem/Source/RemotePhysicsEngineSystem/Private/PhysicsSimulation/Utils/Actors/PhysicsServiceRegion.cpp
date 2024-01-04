@@ -189,32 +189,6 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion
 	RPES_LOG_INFO(TEXT("Updating PSD actors on region with ID: %d."),
 		RegionOwnerPhysicsServiceId);
 
-	// Check if we have a valid connection with this region's physics service
-	// given its ID
-	//if (!FSocketClientProxy::IsConnectionValid(RegionOwnerPhysicsServiceId))
-//	{
-	//	MPHAAS_LOG_ERROR
-			//(TEXT("Could not simulate as there's no valid connection for physics service region with ID: %d"),
-			//RegionOwnerPhysicsServiceId);
-		//return;
-	//}
-
-	// Construct message. This will be verified so service knows that we are
-	// making a "step physics" call
-	//const char* StepPhysicsMessage = "Step";
-
-	//MPHAAS_LOG_INFO
-		//(TEXT("Sending \"Step\" request to physics service with id: %d."),
-		//RegionOwnerPhysicsServiceId);
-
-	// Request physics simulation on physics service
-	//FString PhysicsSimulationResultStr =
-		//FSocketClientProxy::SendMessageAndGetResponse(StepPhysicsMessage,
-		//RegionOwnerPhysicsServiceId);
-
-	//MPHAAS_LOG_INFO(TEXT("Physics service (id: %d) response: %s"),
-		//RegionOwnerPhysicsServiceId, *PhysicsSimulationResultStr);
-
 	// Parse physics simulation result
 	// Each line will contain a result for a actor in terms of:
 	// "Id; posX; posY; posZ; rotX; rotY; rotZ"
@@ -424,7 +398,6 @@ void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 void APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
 	(const APSDActorBase* TargetClonedPSDActor)
 {
-
 	// Check if we have a valid PSDActors spawner. If not, find it
 	check(PSDActorSpawner);
 
@@ -451,6 +424,11 @@ void APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
 	// Override the spawned actor's PSDActor body ID on physics service to be
 	// the same as his clone
 	SpawnedPSDActor->SetPSDActorBodyIdOnPhysicsService(ClonedPSDActorBodyID);
+
+	// Set the new PSDActor status on this region, as it now is inside a
+	// region
+	SpawnedPSDActor->UpdatePSDActorStatusOnRegion
+		(EPSDActorPhysicsRegionStatus::InsideRegion);
 
 	// Add the sphere to the dynamic PSDActors map so it's Transform can be 
 	// updated on next step
@@ -557,6 +535,11 @@ TArray<APSDActorBase*> APhysicsServiceRegion::GetAllPSDActorsOnRegion()
 		// Set the PSDActor owner physics service id
 		FoundActorAsPSDActorBase->SetActorOwnerPhysicsServiceId
 			(RegionOwnerPhysicsServiceId);
+
+		// Set the new PSDActor status on this region, as it now resides
+		// inside of it
+		FoundActorAsPSDActorBase->UpdatePSDActorStatusOnRegion
+			(EPSDActorPhysicsRegionStatus::InsideRegion);
 	}
 
 	return PSDActorsOnRegion;
@@ -567,6 +550,12 @@ void APhysicsServiceRegion::OnRegionEntry
 	UPrimitiveComponent* OtherComp,	int32 OtherBodyIndex, bool bFromSweep,
 	const FHitResult& SweepResult)
 {
+	// If not on server, just ignore this call
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	// If physics service region is not active, just ignore (we may be clearing
 	// the physics region and removing all PSDActors from it)
 	if (!bIsPhysicsServiceRegionActive)
@@ -587,37 +576,60 @@ void APhysicsServiceRegion::OnRegionEntry
 	const auto OtherActorPhysicsServiceId = 
 		OtherActorAsPSDActor->GetActorOwnerPhysicsServiceId();
 	
-	// If this actor already belongs to this region, ignore it. We want only
-	// to process PSDActors from other regions
+	// If this actor already belongs to this region, ignore it. We want to 
+	// process only PSDActors coming from other regions
 	if (OtherActorPhysicsServiceId == RegionOwnerPhysicsServiceId)
 	{
 		return;
 	}
 
-	RPES_LOG_WARNING(TEXT("Actor \"%s\" entried region (id: %d) from region \
-		with physics service owning id: %d (pos: %s)"),
-		*OtherActorAsPSDActor->GetName(), RegionOwnerPhysicsServiceId, 
-		OtherActorPhysicsServiceId,
-		*OtherActorAsPSDActor->GetActorLocation().ToString());
+	// If the actor is already inside a region and enters this region, then
+	// now he is inside a shared region
+	if (OtherActorAsPSDActor->GetPSDActorPhysicsRegionStatus() ==
+		EPSDActorPhysicsRegionStatus::InsideRegion)
+	{
+		RPES_LOG_WARNING(TEXT("Actor \"%s\" entried region (id: %d) from \
+			region with physics service owning id: %d (pos: %s)"),
+			*OtherActorAsPSDActor->GetName(), RegionOwnerPhysicsServiceId,
+			OtherActorPhysicsServiceId,
+			*OtherActorAsPSDActor->GetActorLocation().ToString());
 
-	// Add the PSDActor clone on this physics service
-	AddPSDActorCloneOnPhysicsService(OtherActorAsPSDActor);
-	
-	// Add the PSDActor to the pending migration list
-	PendingMigrationPSDActors.Add(OtherActorAsPSDActor);
+		// Add the PSDActor clone on this physics service
+		AddPSDActorCloneOnPhysicsService(OtherActorAsPSDActor);
 
-	// Bind the actor's exited event on the callback
-	OtherActorAsPSDActor->OnActorExitedCurrentPhysicsRegion.AddDynamic(this,
-		&APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion);
+		// Add the PSDActor to the pending migration list
+		PendingMigrationPSDActors.Add(OtherActorAsPSDActor);
 
-	// Call the method to when he eneters a new physics service region
-	OtherActorAsPSDActor->OnEnteredNewPhysicsRegion();
+		// Bind the actor's exited event on the callback
+		OtherActorAsPSDActor->OnActorExitedCurrentPhysicsRegion.AddDynamic(this,
+			&APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion);
+
+		// Update the PSDActor's region status
+		OtherActorAsPSDActor->UpdatePSDActorStatusOnRegion
+			(EPSDActorPhysicsRegionStatus::SharedRegion);
+
+		// Call the method to when he eneters a new physics service region
+		OtherActorAsPSDActor->OnEnteredNewPhysicsRegion();
+
+		return;
+	}
+
+	// If actor is not coming from a previous PSDActor region, we must treat
+	// it somehow. They engine may be simulating its 
+	RPES_LOG_WARNING(TEXT("A PSDActor has entered a region without being \
+		previously inside a region. This is not yet treated."));
 }
 
 void APhysicsServiceRegion::OnRegionExited
 	(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, 
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
+	// If not on server, just ignore this call
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	// If physics service region is not active, just ignore (we may be clearing
 	// the physics region and removing all PSDActors from it)
 	if (!bIsPhysicsServiceRegionActive)
@@ -664,6 +676,10 @@ void APhysicsServiceRegion::OnRegionExited
 	// Call the method on the PSDActorBase so he knows he has exited this
 	// physics service region
 	OtherActorAsPSDActor->OnExitedPhysicsRegion();
+
+	// Set the new PSDActor status on this region, as it now exited the region
+	OtherActorAsPSDActor->UpdatePSDActorStatusOnRegion
+		(EPSDActorPhysicsRegionStatus::NoRegion);
 }
 
 void APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion(APSDActorBase*
@@ -686,8 +702,6 @@ void APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion(APSDActorBase*
 	}
 
 	// Spawn a new PSD sphere on this region where the other actor is
-	// SpawnNewPSDSphere(ExitedActor->GetActorLocation());
-
 	SpawnPSDActorFromPhysicsServiceClone(ExitedActor);
 
 	// Remove the actor from the pending migration list

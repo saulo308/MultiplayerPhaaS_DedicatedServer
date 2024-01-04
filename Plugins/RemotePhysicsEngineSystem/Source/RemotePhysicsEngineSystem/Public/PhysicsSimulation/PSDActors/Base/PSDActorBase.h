@@ -7,6 +7,19 @@
 #include "PSDActorBase.generated.h"
 
 /** 
+* The enum that contains data on the current PSDActor status according to 
+* physics regions. Thus, will store if the actor is inside a region, a shared
+* region or no region at all.
+*/
+UENUM(BlueprintType)
+enum class EPSDActorPhysicsRegionStatus : uint8
+{
+	InsideRegion,
+	SharedRegion,
+	NoRegion
+};
+
+/** 
 * Delegate called once this PSDActor has exited his owning physics service
 * region.
 */
@@ -36,6 +49,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetActorOwnerPhysicsServiceId(const int32 NewOwnerPhysicsServiceId)
 		{ ActorOwnerPhysicsServiceId = NewOwnerPhysicsServiceId; }
+
+	UFUNCTION(BlueprintCallable)
+	EPSDActorPhysicsRegionStatus GetPSDActorPhysicsRegionStatus()
+		{ return CurrentPSDActorPhysicsRegionStatus; }
 
 public:	
 	/** Sets default values for this actor's properties */
@@ -76,7 +93,7 @@ public:
 	* @param NewActorPosition The new actor position on the current physics
 	* world state
 	*/
-	void UpdatePositionAfterPhysicsSimulation(const FVector NewActorPosition);
+	void UpdatePositionAfterPhysicsSimulation(const FVector& NewActorPosition);
 
 	/**
 	* Updates this actor's rotation. This should be called by the
@@ -87,7 +104,15 @@ public:
 	* on the current physics world state.
 	*/
 	void UpdateRotationAfterPhysicsSimulation
-		(const FVector NewActorRotationEulerAngles);
+		(const FVector& NewActorRotationEulerAngles);
+
+	/**
+	* Updates this actor's physics region status. 
+	* 
+	* @param NewPhysicsRegionStatus The PSDActor's new physics region status
+	*/
+	void UpdatePSDActorStatusOnRegion
+		(EPSDActorPhysicsRegionStatus NewPhysicsRegionStatus);
 
 public:
 	/** Called once this PSDActor enters a new physics service region. */
@@ -119,15 +144,22 @@ public:
 	* @param NewPSDActorBodyIdOnPhysicsService The new PSDActor body ID
 	*/
 	void SetPSDActorBodyIdOnPhysicsService
-		(const uint32 NewPSDActorBodyIdOnPhysicsService) 
-		{ PSDActorBodyIdOnPhysicsService = NewPSDActorBodyIdOnPhysicsService; }
+		(uint32 NewPSDActorBodyIdOnPhysicsService);
 
 	/** 
 	* Returns if this PSDActor is static (should move/updated or not)
 	*
 	* @return True if this PSDActor is static. False otherwise
 	*/
-	bool IsPSDActorStatic() const { return bIsPSDActorStatic; }
+	constexpr bool IsPSDActorStatic() const { return bIsPSDActorStatic; }
+
+protected:
+	/** 
+	* Called once CurrentPSDActorPhysicsRegionStatus is replicated. Thus,
+	* once the current status has changed, this method will be called.
+	*/
+	UFUNCTION()
+	void OnRep_PhysicsRegionStatusUpdated();
 
 protected:
 	/** Called when the game starts or when spawned */
@@ -141,6 +173,20 @@ public:
 	/** This actor's mesh component. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class UStaticMeshComponent* ActorMeshComponent = nullptr;
+
+	/** 
+	* The actor's body id text render component. Used to show the current
+	* actor's bodyID on the physics service
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTextRenderComponent* ActorBodyIdTextRenderComponent = nullptr;
+
+	/**
+	* The actor's physics region text render component. Used to show the 
+	* current actor's physics region status
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTextRenderComponent* ActorRegionStatusTextRender = nullptr;
 
 public:
 	/** 
@@ -157,9 +203,17 @@ protected:
 	* @note This Id will be overwritten if the PSDActor is inside a 
 	* PhysicsServiceRegion upon BeginPlay()
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, 
-		meta=(AllowPrivateAccess="true"))
+	UPROPERTY(BlueprintReadOnly, Replicated)
 	int32 ActorOwnerPhysicsServiceId = 0;
+
+	/** 
+	* The current physics region status of this PSDActor. Should be updated
+	* by the owning physics region
+	*/
+	UPROPERTY(BlueprintReadOnly, 
+		ReplicatedUsing = OnRep_PhysicsRegionStatusUpdated)
+	EPSDActorPhysicsRegionStatus CurrentPSDActorPhysicsRegionStatus =
+		EPSDActorPhysicsRegionStatus::NoRegion;
 
 protected:
 	/** 
