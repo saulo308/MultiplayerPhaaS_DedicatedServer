@@ -144,7 +144,7 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		auto& ThreadWoker = ThreadInfoPair.Key;
 
 		// Set the message to send on the worker
-		ThreadWoker.SetMessageToSend("Step");
+		ThreadWoker.SetMessageToSend("Step\nMessageEnd\n");
 
 		// Toggle the run flag and run thread
 		ThreadInfoPair.Key.ToggleShouldRun();

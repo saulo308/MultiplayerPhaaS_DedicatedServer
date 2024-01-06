@@ -163,7 +163,7 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 	// needed as this may reach the server in separate messages, since it 
 	// can be too big to send everything at once. The server will 
 	// acknowledge the initialization message has ended with this token
-	InitializationMessage += "EndMessage\n";
+	InitializationMessage += "MessageEnd\n";
 
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*InitializationMessage));
@@ -334,11 +334,12 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 
 	// Create the message to send server
 	// The template is:
-	// "AddSphereBody\n
-	// Id; posX; posY; posZ"
+	// "AddBody\n
+	// Id; posX; posY; posZ\n
+	// MessageEnd\n"
 	const FString SpawnNewPSDSphereMessage =
-		FString::Printf(TEXT("AddSphereBody\n%d;%f;%f;%f"), NewSphereID,
-		NewSphereLocation.X, NewSphereLocation.Y,
+		FString::Printf(TEXT("AddBody\n%d;%f;%f;%f\nMessageEnd\n"), 
+		NewSphereID, NewSphereLocation.X, NewSphereLocation.Y,
 		NewSphereLocation.Z);
 
 	// Convert message to std string
@@ -371,11 +372,12 @@ void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 
 	// Create the message to send server
 	// The template is:
-	// "AddSphereBody\n
-	// Id; posX; posY; posZ"
+	// "AddBody\n
+	// Id; posX; posY; posZ\n
+	// MessageEnd\n"
 	const FString SpawnNewPSDActorCloneMessage =
-		FString::Printf(TEXT("AddSphereBody\n%d;%f;%f;%f"), PSDActorBodyID,
-		PSDActorCloneLocation.X, PSDActorCloneLocation.Y,
+		FString::Printf(TEXT("AddBody\n%d;%f;%f;%f\nMessageEnd\n"), 
+		PSDActorBodyID,	PSDActorCloneLocation.X, PSDActorCloneLocation.Y,
 		PSDActorCloneLocation.Z);
 
 	// Convert message to std string
@@ -456,9 +458,10 @@ void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
 	// Create the message to send to the physics service
 	// The template is:
 	// "RemoveBody\n
-	// Id"
-	const FString RemoveBodyMessage = FString::Printf(TEXT("RemoveBody\n%d"), 
-		BodyIdToRemove);
+	// Id\n
+	// MessageEnd\n"
+	const FString RemoveBodyMessage = 
+		FString::Printf(TEXT("RemoveBody\n%d\nMessageEnd\n"), BodyIdToRemove);
 
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*RemoveBodyMessage));
