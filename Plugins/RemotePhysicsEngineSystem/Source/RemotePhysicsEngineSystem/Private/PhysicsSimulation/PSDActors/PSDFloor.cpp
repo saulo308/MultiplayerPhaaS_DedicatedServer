@@ -19,10 +19,11 @@ FString APSDFloor::GetPhysicsServiceInitializationString()
 		GetCurrentActorLocationAsString();
 
 	// For the initialization message, format to the template message:
-	// "ActorTypeString; BodyID; InitialPosX; InitialPosY; InitialPosY\n"
+	// "ActorTypeString; BodyID; bodyType; InitialPosX; InitialPosY; 
+	//	InitialPosY\n"
 	PSDActorPhysicsServiceInitializationString +=
-		FString::Printf(TEXT("floor;%d;%s\n"), PSDActorBodyIdOnPhysicsService, 
-		*CurrentActorLocationAsString);
+		FString::Printf(TEXT("floor;%d;primary;%s\n"), 
+		PSDActorBodyIdOnPhysicsService, *CurrentActorLocationAsString);
 
 	return PSDActorPhysicsServiceInitializationString;
 }

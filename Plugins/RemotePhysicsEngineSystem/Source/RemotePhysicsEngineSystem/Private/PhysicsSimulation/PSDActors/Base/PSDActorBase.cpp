@@ -11,7 +11,8 @@ APSDActorBase::APSDActorBase()
 	PrimaryActorTick.bCanEverTick = true;
 
 	// Creating the actor's root
-	ActorRootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("ActorRoot"));
+	ActorRootComponent = CreateDefaultSubobject<USceneComponent>
+		(TEXT("ActorRoot"));
 	RootComponent = ActorRootComponent;
 
 	// Creating the actor's mesh
@@ -56,7 +57,7 @@ void APSDActorBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-FString APSDActorBase::GetCurrentActorLocationAsString()
+FString APSDActorBase::GetCurrentActorLocationAsString() const
 {
 	// Get the actor location
 	const FVector ActorPos = GetActorLocation();

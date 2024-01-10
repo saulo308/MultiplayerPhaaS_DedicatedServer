@@ -82,7 +82,7 @@ public:
 	* 
 	* @return This actor's current lcoation as a string delimited by ";"
 	*/
-	virtual FString GetCurrentActorLocationAsString();
+	virtual FString GetCurrentActorLocationAsString() const;
 
 public:
 	/**

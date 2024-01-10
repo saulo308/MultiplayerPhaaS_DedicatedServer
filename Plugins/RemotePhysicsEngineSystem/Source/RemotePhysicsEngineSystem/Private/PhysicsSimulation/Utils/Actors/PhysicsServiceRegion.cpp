@@ -335,10 +335,10 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 	// Create the message to send server
 	// The template is:
 	// "AddBody\n
-	// Id; posX; posY; posZ\n
+	// actorType; Id; bodyType; posX; posY; posZ\n
 	// MessageEnd\n"
 	const FString SpawnNewPSDSphereMessage =
-		FString::Printf(TEXT("AddBody\n%d;%f;%f;%f\nMessageEnd\n"), 
+		FString::Printf(TEXT("AddBody\nspere;%d;primary;%f;%f;%f\nMessageEnd\n"), 
 		NewSphereID, NewSphereLocation.X, NewSphereLocation.Y,
 		NewSphereLocation.Z);
 
@@ -367,18 +367,18 @@ void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 	const int32 PSDActorBodyID = 
 		PSDActorToClone->GetPSDActorBodyIdOnPhysicsService();
 
-	// Get the PSDActor to clone location
-	const FVector PSDActorCloneLocation = PSDActorToClone->GetActorLocation();
+	// Get the PSDActor to clone location as string
+	const auto PSDActorCloneLocation = 
+		PSDActorToClone->GetCurrentActorLocationAsString();
 
 	// Create the message to send server
 	// The template is:
 	// "AddBody\n
-	// Id; posX; posY; posZ\n
+	// actorType; Id; bodyType; posX; posY; posZ\n
 	// MessageEnd\n"
 	const FString SpawnNewPSDActorCloneMessage =
-		FString::Printf(TEXT("AddBody\n%d;%f;%f;%f\nMessageEnd\n"), 
-		PSDActorBodyID,	PSDActorCloneLocation.X, PSDActorCloneLocation.Y,
-		PSDActorCloneLocation.Z);
+		FString::Printf(TEXT("AddBody\nsphere;%d;clone;%s\nMessageEnd\n"), 
+		PSDActorBodyID, *PSDActorCloneLocation);
 
 	// Convert message to std string
 	std::string MessageAsStdString

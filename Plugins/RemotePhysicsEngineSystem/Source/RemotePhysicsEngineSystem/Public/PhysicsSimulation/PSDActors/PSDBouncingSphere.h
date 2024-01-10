@@ -25,7 +25,8 @@ public:
 	* Returns the physics service initialization string. This will return
 	* a string according to the initialization message template:
 	*
-	* "ActorTypeString; BodyID; InitialPosX; InitialPosY; InitialPosY\n"
+	* "ActorTypeString; BodyID; bodyType; InitialPosX; InitialPosY; 
+	* InitialPosY\n"
 	*
 	* Overwritten here, will return the ActorTypeString as "sphere"
 	*
