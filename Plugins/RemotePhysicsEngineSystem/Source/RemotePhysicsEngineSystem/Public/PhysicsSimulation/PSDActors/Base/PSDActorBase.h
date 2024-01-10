@@ -133,7 +133,7 @@ public:
 	* 
 	* @return This PSDActor's body unique ID on the physics service
 	*/
-	uint32 GetPSDActorBodyIdOnPhysicsService() const
+	int32 GetPSDActorBodyIdOnPhysicsService() const
 		{ return PSDActorBodyIdOnPhysicsService; }
 
 	/** 
@@ -144,7 +144,8 @@ public:
 	* @param NewPSDActorBodyIdOnPhysicsService The new PSDActor body ID
 	*/
 	void SetPSDActorBodyIdOnPhysicsService
-		(uint32 NewPSDActorBodyIdOnPhysicsService);
+		(int32 NewPSDActorBodyIdOnPhysicsService)
+		{ PSDActorBodyIdOnPhysicsService = NewPSDActorBodyIdOnPhysicsService; }
 
 	/** 
 	* Returns if this PSDActor is static (should move/updated or not)
@@ -160,6 +161,10 @@ protected:
 	*/
 	UFUNCTION()
 	void OnRep_PhysicsRegionStatusUpdated();
+
+	/** Called once PSDActorBodyIdOnPhysicsService is replicated */
+	UFUNCTION()
+	void OnRep_PSDActorBodyIdOnPhysicsServiceUpdated();
 
 protected:
 	/** Called when the game starts or when spawned */
@@ -215,14 +220,16 @@ protected:
 	EPSDActorPhysicsRegionStatus CurrentPSDActorPhysicsRegionStatus =
 		EPSDActorPhysicsRegionStatus::NoRegion;
 
-protected:
-	/** 
-	* The PSDActor's body unique ID on the physics service. Useful to 
-	* uniquely identify this PSDActor either on the world or on the physics 
+	/**
+	* The PSDActor's body unique ID on the physics service. Useful to
+	* uniquely identify this PSDActor either on the world or on the physics
 	* service
 	*/
-	uint32 PSDActorBodyIdOnPhysicsService = 0;
+	UPROPERTY(BlueprintReadOnly,
+		ReplicatedUsing = OnRep_PSDActorBodyIdOnPhysicsServiceUpdated)
+	int32 PSDActorBodyIdOnPhysicsService = 0;
 
+protected:
 	/** 
 	* Flag that indicates if this PSDActor is static. If false, the PSDActor
 	* will not be considered on each physics service step and will not be

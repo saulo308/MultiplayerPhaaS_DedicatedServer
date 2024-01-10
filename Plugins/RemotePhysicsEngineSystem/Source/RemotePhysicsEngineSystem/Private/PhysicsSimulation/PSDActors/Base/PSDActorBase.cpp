@@ -76,6 +76,7 @@ void APSDActorBase::GetLifetimeReplicatedProps
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(APSDActorBase, ActorOwnerPhysicsServiceId);
+	DOREPLIFETIME(APSDActorBase, PSDActorBodyIdOnPhysicsService);
 	DOREPLIFETIME(APSDActorBase, CurrentPSDActorPhysicsRegionStatus);
 }
 
@@ -158,12 +159,8 @@ void APSDActorBase::OnRep_PhysicsRegionStatusUpdated()
 		(FText::FromString(*NewPhysicsRegionStatusAsString));
 }
 
-void APSDActorBase::SetPSDActorBodyIdOnPhysicsService
-	(uint32 NewPSDActorBodyIdOnPhysicsService)
+void APSDActorBase::OnRep_PSDActorBodyIdOnPhysicsServiceUpdated()
 {
-	// Set the new PSDActor body id
-	PSDActorBodyIdOnPhysicsService = NewPSDActorBodyIdOnPhysicsService;
-
 	// Update the text render component
 	ActorBodyIdTextRenderComponent->SetText
 		(FText::AsNumber(PSDActorBodyIdOnPhysicsService));
