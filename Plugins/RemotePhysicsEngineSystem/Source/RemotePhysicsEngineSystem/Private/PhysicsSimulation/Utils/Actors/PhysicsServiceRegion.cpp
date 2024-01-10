@@ -388,8 +388,7 @@ void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 	// limitation of 128 bytes, returning garbage when it's over it
 	char* MessageAsChar = &MessageAsStdString[0];
 
-	// Send message to initialize physics world on service
-	// TODO this should receive a given physics service id
+	// Send message to add the body to the physics world on service
 	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
 		(MessageAsChar, RegionOwnerPhysicsServiceId);
 
@@ -435,6 +434,30 @@ void APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
 	// Add the sphere to the dynamic PSDActors map so it's Transform can be 
 	// updated on next step
 	DynamicPSDActorsOnRegion.Add(ClonedPSDActorBodyID, SpawnedPSDActor);
+
+	// Create the message to send server to update the body type. This is 
+	// needed as the body is now primary for this service
+	// The template is:
+	// "UpdateBodyType\n
+	// Id; newBodyType\n
+	// MessageEnd\n"
+	const FString UpdateBodyTypeMessage =
+		FString::Printf(TEXT("UpdateBodyType\n%d;primary\nMessageEnd\n"),
+		ClonedPSDActorBodyID);
+
+	// Convert message to std string
+	std::string MessageAsStdString(TCHAR_TO_UTF8(*UpdateBodyTypeMessage));
+
+	// Convert message to char*. This is needed as some UE converting has the
+	// limitation of 128 bytes, returning garbage when it's over it
+	char* MessageAsChar = &MessageAsStdString[0];
+
+	// Send message to update the body type on service
+	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
+		(MessageAsChar, RegionOwnerPhysicsServiceId);
+
+	RPES_LOG_INFO(TEXT("Update PSDActor BodyType response: %s"),
+		*Response);
 }
 
 void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
