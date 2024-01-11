@@ -49,6 +49,11 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 public:
+	/** */
+	TMap<int32, class APSDActorBase*> GetCachedDynamicPSDActorsOnRegion()
+		{ return DynamicPSDActorsOnRegion; }
+
+public:
 	/** 
 	* Intitializes the physics service region. This will connect to the physics
 	* service given the server ip address set on the properties. Once 
@@ -116,9 +121,9 @@ private:
 	bool ConnectToPhysicsService();
 
 	/** 
-	* Gets all the dynamic PSDActors on this region. Thus, this will get all
-	* the PSDActors inside this region that will be constantly be updated by 
-	* the physics service at each step.
+	* Gets all the dynamic PSDActors on this region. This will get all the 
+	* PSDActors inside this region that will be constantly be updated by the
+	* physics service at each step.
 	*/
 	void GetAllDynamicPSDActorOnRegion();
 

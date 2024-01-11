@@ -122,13 +122,14 @@ void APSDActorBase::UpdatePSDActorStatusOnRegion
 	}
 }
 
-void APSDActorBase::OnEnteredNewPhysicsRegion()
+void APSDActorBase::OnEnteredPhysicsRegion(int32 EnteredPhysicsRegionId)
 {
+	OnActorEnteredPhysicsRegion.Broadcast(this, EnteredPhysicsRegionId);
 }
 
-void APSDActorBase::OnExitedPhysicsRegion()
+void APSDActorBase::OnExitedPhysicsRegion(int32 ExitedPhysicsRegionId)
 {
-	OnActorExitedCurrentPhysicsRegion.Broadcast(this);
+	OnActorExitedPhysicsRegion.Broadcast(this, ExitedPhysicsRegionId);
 }
 
 void APSDActorBase::OnRep_PhysicsRegionStatusUpdated()

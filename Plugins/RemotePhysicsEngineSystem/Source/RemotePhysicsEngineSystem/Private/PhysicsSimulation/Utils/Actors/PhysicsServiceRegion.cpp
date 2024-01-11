@@ -598,6 +598,10 @@ void APhysicsServiceRegion::OnRegionEntry
 		return;
 	}
 
+	// Call the method to when he enteres a new physics service region
+	OtherActorAsPSDActor->OnEnteredPhysicsRegion(RegionOwnerPhysicsServiceId);
+
+	/**
 	// Get the OtherActor physics service ID
 	const auto OtherActorPhysicsServiceId = 
 		OtherActorAsPSDActor->GetActorOwnerPhysicsServiceId();
@@ -644,6 +648,7 @@ void APhysicsServiceRegion::OnRegionEntry
 	// it somehow. They engine may be simulating its 
 	RPES_LOG_WARNING(TEXT("A PSDActor has entered a region without being \
 		previously inside a region. This is not yet treated."));
+	*/
 }
 
 void APhysicsServiceRegion::OnRegionExited
@@ -672,6 +677,11 @@ void APhysicsServiceRegion::OnRegionExited
 		return;
 	}
 
+	// Call the method on the PSDActorBase so he knows he has exited this
+	// physics service region
+	OtherActorAsPSDActor->OnExitedPhysicsRegion(RegionOwnerPhysicsServiceId);
+
+	/*
 	// Get the OtherActor physics service ID
 	const auto OtherActorPhysicsServiceId =
 		OtherActorAsPSDActor->GetActorOwnerPhysicsServiceId();
@@ -706,11 +716,13 @@ void APhysicsServiceRegion::OnRegionExited
 	// Set the new PSDActor status on this region, as it now exited the region
 	OtherActorAsPSDActor->UpdatePSDActorStatusOnRegion
 		(EPSDActorPhysicsRegionStatus::NoRegion);
+	*/
 }
 
 void APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion(APSDActorBase*
 	ExitedActor)
 {
+	/*
 	RPES_LOG_INFO(TEXT("Physics service region (id:%d) processed actor \
 		\"%s\" fully exiting previous region."), RegionOwnerPhysicsServiceId,
 		*ExitedActor->GetName());
@@ -735,4 +747,5 @@ void APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion(APSDActorBase*
 
 	// Destroy the OtherActor, as now he will be simulated inside this region
 	ExitedActor->Destroy();
+	*/
 }

@@ -7,6 +7,21 @@
 #include "ExternalCommunication/Sockets/SocketClientThreadWorker.h"
 #include "PSDActorsCoordinator.generated.h"
 
+enum class EPSDActorBodyTypeOnPhysicsServiceRegion : uint8
+{
+	Primary,
+	Clone
+};
+
+struct FPSDActorPhysicsServiceRegionFootprint
+{
+	/** */
+	int32 PhysicsServiceRegionId = 0;
+
+	/** */
+	EPSDActorBodyTypeOnPhysicsServiceRegion BodyTypeOnPhysicsServiceRegion;
+};
+
 /** 
 * This actor handles the coordination of the Physics-Service-Drive (PSD) 
 * actors. Thus, this will communicates with the physics service through a 
@@ -89,6 +104,17 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
+	/** */
+	UFUNCTION()
+	void OnPSDActorEnteredPhysicsRegion(APSDActorBase* EnteredPSDActor,
+		int32 EnteredPhysicsRegionId);
+
+	/** */
+	UFUNCTION()
+	void OnPSDActorExitPhysicsRegion(APSDActorBase* ExitedPSDActor,
+		int32 ExitedPhysicsRegionId);
+
+private:
 	/** 
 	* Updates the PSD actors Transform. This will request the physics service
 	* server physics update and await its response. Once returned, will parse 
@@ -106,7 +132,11 @@ private:
 	* it on the physics service and the value is the PSD actor reference 
 	* itself.
 	*/
-	TMap<uint32, class APSDActorBase*> PSDActorsToSimulateMap;
+	//TMap<uint32, class APSDActorBase*> PSDActorsToSimulateMap;
+
+	/** */
+	TMap<class APSDActorBase*, TArray<FPSDActorPhysicsServiceRegionFootprint>> 
+		SharedRegionsPSDActors;
 
 	/** The list of physics service regions on the world. */
 	TArray<class APhysicsServiceRegion*> PhysicsServiceRegionList;
@@ -134,5 +164,6 @@ private:
 	TMap<int32, TPair<class FSocketClientThreadWorker, class FRunnableThread*>>
 		SocketClientThreadsInfoList;
 
+	/** */
 	uint32 StepPhysicsCounter = 0;
 };

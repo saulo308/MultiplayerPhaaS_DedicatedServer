@@ -81,6 +81,24 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
 	{
 		PhysicsServiceRegion->InitializePhysicsServiceRegion();
+
+		// Get all the dynamic PSDActors on this region
+		const auto DynamicPSDActorsOnRegion = PhysicsServiceRegion->
+			GetCachedDynamicPSDActorsOnRegion();
+
+		// For each dynamic PSDActor, bind the OnEnteredPhysicsRegion and
+		// OnExitedPhysicsRegion so the coordinator knows once it occurs
+		for (const auto& DynamicPSDActorOnRegion : DynamicPSDActorsOnRegion)
+		{
+			// Get the PSDActor from the TMap
+			const auto& PSDActor = DynamicPSDActorOnRegion.Value;
+
+			// Bind the delegates
+			PSDActor->OnActorEnteredPhysicsRegion.AddDynamic(this, 
+				&APSDActorsCoordinator::OnPSDActorEnteredPhysicsRegion);
+			PSDActor->OnActorEnteredPhysicsRegion.AddDynamic(this,
+				&APSDActorsCoordinator::OnPSDActorExitPhysicsRegion);
+		}
 	}
 
 	// Set the flag to start simulating on each tick
@@ -210,5 +228,196 @@ void APSDActorsCoordinator::GetAllPhysicsServiceRegions()
 
 		// Add to list
 		PhysicsServiceRegionList.Add(FoundPhysicsServiceRegion);
+	}
+}
+
+void APSDActorsCoordinator::OnPSDActorEnteredPhysicsRegion
+	(APSDActorBase* EnteredPSDActor, int32 EnteredPhysicsRegionId)
+{
+	RPES_LOG_INFO(TEXT("PSDActor \"%s\" has entered region with id: %d"),
+		*EnteredPSDActor->GetName(), EnteredPhysicsRegionId);
+
+	// Get the PSDActor owner physics service Id
+	const int32 EnteredPSDActorCurrentOwnerPhysicsServiceId =
+		EnteredPSDActor->GetActorOwnerPhysicsServiceId();
+
+	// If the owner physics service id is the same as the one he has entered
+	// just ignore, we want only PSDActors that entered a shared region
+	if (EnteredPSDActorCurrentOwnerPhysicsServiceId == EnteredPhysicsRegionId)
+	{
+		return;
+	}
+
+	// If not the same, the actor has entered a different physics service 
+	// region ID, and therefore, is on a shared region
+
+	// Update the PSDActor's region status to inform he is on a shared region
+	// (this may be already set as is if the PSDActor is entering a third
+	// physics region)
+	EnteredPSDActor->UpdatePSDActorStatusOnRegion
+		(EPSDActorPhysicsRegionStatus::SharedRegion);
+
+	// Check if the PSDActor is already on the SharedRegionsPSDActors Map (this
+	// will happen when this PSDActor enters a third physics region 
+	// simultaneously)
+	auto EnteredPSDActorFootprintInfo = 
+		SharedRegionsPSDActors.Find(EnteredPSDActor);
+
+	// If not, create a new entry for it
+	if (!EnteredPSDActorFootprintInfo)
+	{
+		// We will have two entries: One for the current owner physics region
+		// and another for the region the PSDActor has just entered
+		FPSDActorPhysicsServiceRegionFootprint PrimaryFootprint;
+
+		// Create the data for the current owner physics region
+		PrimaryFootprint.PhysicsServiceRegionId = 
+			EnteredPSDActorCurrentOwnerPhysicsServiceId;
+		PrimaryFootprint.BodyTypeOnPhysicsServiceRegion = 
+			EPSDActorBodyTypeOnPhysicsServiceRegion::Primary;
+
+		// Add the PSDActor to the shared region PSDActors
+		SharedRegionsPSDActors.Add(EnteredPSDActor, { PrimaryFootprint }); 
+		
+		// Set the enteres PSDActor footprint info
+		EnteredPSDActorFootprintInfo = 
+			SharedRegionsPSDActors.Find(EnteredPSDActor);
+	}
+
+	// For correctenss-sake, check if this is valid (should always be valid
+	// at this point)
+	check(EnteredPSDActorFootprintInfo);
+
+	// Create the clone footprint
+	FPSDActorPhysicsServiceRegionFootprint CloneFootprint;
+
+	// Create the data for the region he has just entered
+	CloneFootprint.PhysicsServiceRegionId = EnteredPhysicsRegionId;
+	CloneFootprint.BodyTypeOnPhysicsServiceRegion =
+		EPSDActorBodyTypeOnPhysicsServiceRegion::Clone;
+
+	// Add the clone footprint to the TArray for this actor
+	SharedRegionsPSDActors[EnteredPSDActor].Add(CloneFootprint);
+}
+
+void APSDActorsCoordinator::OnPSDActorExitPhysicsRegion
+	(APSDActorBase* ExitedPSDActor, int32 ExitedPhysicsRegionId)
+{
+	RPES_LOG_INFO(TEXT("PSDActor \"%s\" has exited region with id: %d"),
+		*ExitedPSDActor->GetName(), ExitedPhysicsRegionId);
+
+	// Get the PSDActor owner physics service Id
+	const int32 ExitedPSDActorCurrentOwnerPhysicsServiceId =
+		ExitedPSDActor->GetActorOwnerPhysicsServiceId();
+
+	// If the owner physics service id is the same as the one he has exited,
+	// it means he is exiting his owner:
+	if (ExitedPSDActorCurrentOwnerPhysicsServiceId == ExitedPhysicsRegionId)
+	{
+		// Check if the PSDActor is already on the SharedRegionsPSDActors Map
+		auto* ExitedPSDActorFootprintInfo = 
+			SharedRegionsPSDActors.Find(ExitedPSDActor);
+
+		// If not shared region info for this PSDActor, this PSDActor has 
+		// exited every region of the world. Therefore, will be destroyed
+		if (!ExitedPSDActorFootprintInfo)
+		{
+			// Request the physics region to destroy this PSDActor as he is 
+			// no longer in any region
+
+			// TODO
+
+			return;
+		}
+
+		// If the shared region info does exists, then we should transfer this
+		// PSDActor to another physics service region (migrate)
+
+		// check if there are at list two footprints. If not, something is 
+		// wrong. The PSDActor should be at least on two regions to be on the
+		// shared regions PSDActors map
+		check(ExitedPSDActorFootprintInfo->Num() >= 2);
+
+		// Request the new region to spawn the PSDActor from its clone
+
+			// TODO
+
+		// If the TArray of shared footprint only has two info, it means now
+		// that he will only have one, and therefore, can be excluded from the
+		// coordinator shared regions PSDActors map
+		if (ExitedPSDActorFootprintInfo->Num() == 2)
+		{
+			SharedRegionsPSDActors.Remove(ExitedPSDActor);
+		}
+		else
+		{
+			// If not, we will create a new entry
+			
+			// Update the shared regions map TArray to remove the first region
+			// (which should be the primary - now exited)
+			ExitedPSDActorFootprintInfo->RemoveAt(0);
+
+			// Get the first region, which should be promoted to primary now
+			// as it will be owning the PSDActor
+			auto& ClonePhysicsServiceRegion = 
+				(*ExitedPSDActorFootprintInfo)[0];
+
+			// Update the clone physics region to primary as now he will be 
+			// the new owner of the PSDActor
+			ClonePhysicsServiceRegion.BodyTypeOnPhysicsServiceRegion =
+				EPSDActorBodyTypeOnPhysicsServiceRegion::Primary;
+
+			// Get a copy of this footprint TArray
+			TArray<FPSDActorPhysicsServiceRegionFootprint> 
+				NewActorFootprint = SharedRegionsPSDActors[ExitedPSDActor];
+
+			// Create a new shared PSDActor info on the map with the newly
+			// spawned PSDActor
+			//SharedRegionsPSDActors.Add(, NewActorFootprint);
+
+			// Remove the old footprint info
+			SharedRegionsPSDActors.Remove(ExitedPSDActor);
+		}
+
+		// Destroy the exited PSDActor, as he will no longer be owned by his
+		// current physics service region (we have spawned a new one with a
+		// new owner physics service region)
+
+			// TODO
+
+
+		return;
+	}
+
+	// If the owner physics service id is NOT the same as the one he has 
+	// exited, it means he is exiting a physics service region that has him
+	// as a clone
+
+	// Request the removal of the clone from the physics service
+			// TODO
+			
+	// Get the footprint info from the SharedRegionsPSDActors Map
+	auto* ExitedPSDActorFootprintInfo =
+		SharedRegionsPSDActors.Find(ExitedPSDActor);
+	
+	// Should be valid here, as he is exiting a outer physics service region.
+	// Thus, should be on the shared regions PSDActors map
+	check(ExitedPSDActorFootprintInfo);
+
+	// check if there are at list two footprints. If not, something is 
+	// wrong. The PSDActor should be at least on two regions to be on the
+	// shared regions PSDActors map
+	check(ExitedPSDActorFootprintInfo->Num() >= 2);
+
+	// For each footprint info, find the one with the current exited physics
+	// service region id and remove it
+	for (int32 i = ExitedPSDActorFootprintInfo->Num() - 1; i >= 0; i--)
+	{
+		if ((*ExitedPSDActorFootprintInfo)[i].PhysicsServiceRegionId
+			== ExitedPhysicsRegionId)
+		{
+			ExitedPSDActorFootprintInfo->RemoveAt(i);
+			break;
+		}
 	}
 }
