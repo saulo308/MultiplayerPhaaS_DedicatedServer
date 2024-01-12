@@ -79,6 +79,40 @@ public:
 	*/
 	void ClearPhysicsServiceRegion();
 
+
+	void DestroyPSDActorOnPhysicsRegion(APSDActorBase* PSDActorToDestroy);
+
+	/**
+	* Spawns a PSDActor from a physics service clone. This happens once a
+	* PSDActor exits his previous PhysicsServiceRegion. When this happens, we
+	* may spawn the PSDActor in this region, finishing the PSDActor migration.
+	*
+	* @note It is important to note that the PSDActor's clone has to
+	* previously exist as a clone on this physics region's phyiscs service
+	*
+	* @param TargetClonedPSDActor The PSDActor that will be spawned from the
+	* physics service
+	* 
+	* @return 
+	*/
+	APSDActorBase* SpawnPSDActorFromPhysicsServiceClone
+		(const APSDActorBase* TargetClonedPSDActor);
+
+	/**
+	* Adds a PSDActor clone on the physics service. This is needed once a
+	* PSDActor enters this region. Once this happens, we spawn a clone to
+	* represent entered PSDActor so the PSDActors on this region can collide
+	* with it. Evetually, we may spawn this PSDActor clone on the physics
+	* region, if he exits his previous physics region.
+	*
+	* @note The PSDActor will not acctually spawn on this physics region, but
+	* only on the physics service.
+	*
+	* @param PSDActorToClone The PSDActor to clone on the physics service
+	*/
+	void AddPSDActorCloneOnPhysicsService
+		(const APSDActorBase* PSDActorToClone);
+
 protected:
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
@@ -141,36 +175,6 @@ private:
 	* service.
 	*/
 	void InitializeRegionPhysicsWorld();
-
-private:
-	/** 
-	* Adds a PSDActor clone on the physics service. This is needed once a 
-	* PSDActor enters this region. Once this happens, we spawn a clone to 
-	* represent entered PSDActor so the PSDActors on this region can collide
-	* with it. Evetually, we may spawn this PSDActor clone on the physics
-	* region, if he exits his previous physics region.
-	* 
-	* @note The PSDActor will not acctually spawn on this physics region, but
-	* only on the physics service.
-	* 
-	* @param PSDActorToClone The PSDActor to clone on the physics service
-	*/
-	void AddPSDActorCloneOnPhysicsService
-		(const APSDActorBase* PSDActorToClone);
-
-	/** 
-	* Spawns a PSDActor from a physics service clone. This happens once a 
-	* PSDActor exits his previous PhysicsServiceRegion. When this happens, we
-	* may spawn the PSDActor in this region, finishing the PSDActor migration.
-	* 
-	* @note It is important to note that the PSDActor's clone has to
-	* previously exist as a clone on this physics region's phyiscs service
-	* 
-	* @param TargetClonedPSDActor The PSDActor that will be spawned from the
-	* physics service
-	*/
-	void SpawnPSDActorFromPhysicsServiceClone
-		(const APSDActorBase* TargetClonedPSDActor);
 
 public:
 	/** 

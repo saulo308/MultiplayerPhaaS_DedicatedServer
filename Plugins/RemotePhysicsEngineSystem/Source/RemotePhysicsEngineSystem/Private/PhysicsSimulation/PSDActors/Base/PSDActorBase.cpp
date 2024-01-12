@@ -37,8 +37,7 @@ APSDActorBase::APSDActorBase()
 	// Set this actor to replicate as it will spawn on the server
 	bReplicates = true;
 	SetReplicateMovement(true);
-
-	// Set the actor's BodyID on the physics service as the UniqueID 
+ 
 	PSDActorBodyIdOnPhysicsService = GetUniqueID();
 }
 
@@ -46,10 +45,12 @@ void APSDActorBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Set the actor's body id on the text render component (called both
-	// on server and client)
-	ActorBodyIdTextRenderComponent->SetText
-		(FText::AsNumber(PSDActorBodyIdOnPhysicsService));
+	// Set the actor's body id on the server
+	if (HasAuthority())
+	{
+		// Set the actor's BodyID on the physics service as the UniqueID
+		PSDActorBodyIdOnPhysicsService = GetUniqueID();
+	}
 }
 
 void APSDActorBase::Tick(float DeltaTime)
@@ -162,6 +163,9 @@ void APSDActorBase::OnRep_PhysicsRegionStatusUpdated()
 
 void APSDActorBase::OnRep_PSDActorBodyIdOnPhysicsServiceUpdated()
 {
+	RPES_LOG_WARNING(TEXT("PSDActor body id updated: %d"),
+		PSDActorBodyIdOnPhysicsService);
+
 	// Update the text render component
 	ActorBodyIdTextRenderComponent->SetText
 		(FText::AsNumber(PSDActorBodyIdOnPhysicsService));

@@ -57,15 +57,15 @@ void APhysicsServiceRegion::Tick(float DeltaTime)
 
 void APhysicsServiceRegion::InitializePhysicsServiceRegion()
 {
-	RPES_LOG_INFO(TEXT("Starting PSD actors simulation on region with \
-		ID: %d."), RegionOwnerPhysicsServiceId);
+	RPES_LOG_INFO(TEXT("Starting PSD actors simulation on region with "
+		"ID: %d."), RegionOwnerPhysicsServiceId);
 
 	// Connect this region to his physics service (given IP addr and ID)
 	const bool bWasConnectionSuccessful = ConnectToPhysicsService();
 	if (!bWasConnectionSuccessful)
 	{
-		RPES_LOG_ERROR(TEXT("Physics service region with ID %d could not \
-			connect to the physics service server."), 
+		RPES_LOG_ERROR(TEXT("Physics service region with ID %d could not "
+			"connect to the physics service server."),
 			RegionOwnerPhysicsServiceId);
 		return;
 	}
@@ -118,8 +118,8 @@ void APhysicsServiceRegion::GetAllDynamicPSDActorOnRegion()
 
 void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 {
-	RPES_LOG_INFO(TEXT("Initializing physics world on physics service with \
-		ID: %d."), RegionOwnerPhysicsServiceId);
+	RPES_LOG_INFO(TEXT("Initializing physics world on physics service with "
+		"ID: %d."), RegionOwnerPhysicsServiceId);
 
 	// Create the initialization message string and initialize it with "Init"
 	// so physics service knows what this message is
@@ -140,8 +140,8 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 		// physics service id. If not, something went wrong
 		if (CurrentActorOwnerServerId != RegionOwnerPhysicsServiceId)
 		{
-			RPES_LOG_ERROR(TEXT("PSDActor owning server id (%d) is not the \
-				same as the region he is in (region ID: %d)."),
+			RPES_LOG_ERROR(TEXT("PSDActor owning server id (%d) is not the "
+				"same as the region he is in (region ID: %d)."),
 				CurrentActorOwnerServerId, RegionOwnerPhysicsServiceId);
 		}
 
@@ -172,8 +172,8 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 	// the limitation of 128 bytes, returning garbage when it's over it
 	char* MessageAsChar = &MessageAsStdString[0];
 
-	RPES_LOG_INFO(TEXT("Sending init message for service with id \"%d\". \
-		Message: %s"), RegionOwnerPhysicsServiceId, *InitializationMessage);
+	RPES_LOG_INFO(TEXT("Sending init message for service with id \"%d\". "
+		"Message: %s"), RegionOwnerPhysicsServiceId, *InitializationMessage);
 
 	// Send message to initialize physics world on service
 	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
@@ -212,8 +212,8 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion
 		// Check for errors
 		if (ParsedActorSimulationResult.Num() < 7)
 		{
-			RPES_LOG_ERROR(TEXT("Could not parse line \"%s\". Number of \
-				arguments is: %d"), *SimulationResultLine, 
+			RPES_LOG_ERROR(TEXT("Could not parse line \"%s\". Number of "
+				"arguments is: %d"), *SimulationResultLine,
 				ParsedActorSimulationResult.Num());
 			return;
 		}
@@ -239,8 +239,8 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion
 		// To be sure, check if the actor is valid
 		if (!ActorToUpdate)
 		{
-			RPES_LOG_ERROR(TEXT("Could not update dynamic actor with ID (%d) \
-				on physics service region (id: %d) as he is invalid."),
+			RPES_LOG_ERROR(TEXT("Could not update dynamic actor with ID (%d) "
+				"on physics service region (id: %d) as he is invalid."),
 				ActorID, RegionOwnerPhysicsServiceId);
 			continue;
 		}
@@ -280,8 +280,8 @@ bool APhysicsServiceRegion::ConnectToPhysicsService()
 
 	if (ParsedServerIpAddr.Num() < 2)
 	{
-		RPES_LOG_ERROR(TEXT("Could not parse server ip addr: \"%s\". Check \
-			parsing."), *PhysicsServiceIpAddr);
+		RPES_LOG_ERROR(TEXT("Could not parse server ip addr: \"%s\". Check "
+			"parsing."), *PhysicsServiceIpAddr);
 		return false;
 	}
 
@@ -311,8 +311,8 @@ bool APhysicsServiceRegion::ConnectToPhysicsService()
 
 void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 {
-	RPES_LOG_INFO(TEXT("Spawning new PSD sphere at location (%s) on region \
-		with id: %d"), *NewSphereLocation.ToString(), 
+	RPES_LOG_INFO(TEXT("Spawning new PSD sphere at location (%s) on region "
+		"with id: %d"), *NewSphereLocation.ToString(), 
 		RegionOwnerPhysicsServiceId);
 
 	// Check if we have a valid PSDActors spawner. If not, find it
@@ -396,7 +396,7 @@ void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 		*Response);
 }
 
-void APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
+APSDActorBase* APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
 	(const APSDActorBase* TargetClonedPSDActor)
 {
 	// Check if we have a valid PSDActors spawner. If not, find it
@@ -412,8 +412,8 @@ void APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
 	const auto SpawnedPSDActor = PSDActorSpawner->SpawnPSDActor
 		(NewPSDActorLocation, RegionOwnerPhysicsServiceId);
 
-	RPES_LOG_WARNING(TEXT("Spawning new PSDActor (%s) from clone \"%s\" on \
-		region(id: %d) at pos: %s"), *SpawnedPSDActor->GetName(), 
+	RPES_LOG_WARNING(TEXT("Spawning new PSDActor (%s) from clone \"%s\" on "
+		"region(id: %d) at pos: %s"), *SpawnedPSDActor->GetName(), 
 		*TargetClonedPSDActor->GetName(), RegionOwnerPhysicsServiceId, 
 		*NewPSDActorLocation.ToString());
 
@@ -458,6 +458,26 @@ void APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
 
 	RPES_LOG_INFO(TEXT("Update PSDActor BodyType response: %s"),
 		*Response);
+
+	return SpawnedPSDActor;
+}
+
+void APhysicsServiceRegion::DestroyPSDActorOnPhysicsRegion
+	(APSDActorBase* PSDActorToDestroy)
+{
+	// First, remove the PSDActor from the physics service
+	RemovePSDActorFromPhysicsService(PSDActorToDestroy);
+
+	// Get the actor's body id on physics service to find it on the dynamic 
+	// PSDActors map
+	const auto PSDActorBodyId =
+		PSDActorToDestroy->GetPSDActorBodyIdOnPhysicsService();
+
+	// Remove this PSDActor from the dynamic PSDActors map
+	DynamicPSDActorsOnRegion.Remove(PSDActorBodyId);
+
+	// Destroy the PSDActor
+	PSDActorToDestroy->Destroy();
 }
 
 void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
@@ -469,8 +489,8 @@ void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
 	// Check if the PSDActor to remove is valid
 	if (!PSDActorToRemove)
 	{
-		RPES_LOG_ERROR(TEXT("Could not remove PSDActor as reference is \
-			invalid."));
+		RPES_LOG_ERROR(TEXT("Could not remove PSDActor as reference is "
+			"invalid."));
 		return;
 	}
 
