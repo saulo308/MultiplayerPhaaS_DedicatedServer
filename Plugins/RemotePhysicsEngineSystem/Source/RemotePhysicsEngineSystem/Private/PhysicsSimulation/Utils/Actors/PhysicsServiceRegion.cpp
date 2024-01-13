@@ -462,6 +462,34 @@ APSDActorBase* APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
 	return SpawnedPSDActor;
 }
 
+void APhysicsServiceRegion::UpdatePSDActorBodyType
+	(const APSDActorBase* TargetPSDActor, const FString& NewBodyType)
+{
+	// Create the message to send server to update the body type. This is 
+	// needed as the body is now primary for this service
+	// The template is:
+	// "UpdateBodyType\n
+	// Id; newBodyType\n
+	// MessageEnd\n"
+	const FString UpdateBodyTypeMessage =
+		FString::Printf(TEXT("UpdateBodyType\n%d;%s\nMessageEnd\n"),
+		TargetPSDActor->GetPSDActorBodyIdOnPhysicsService(), *NewBodyType);
+
+	// Convert message to std string
+	std::string MessageAsStdString(TCHAR_TO_UTF8(*UpdateBodyTypeMessage));
+
+	// Convert message to char*. This is needed as some UE converting has the
+	// limitation of 128 bytes, returning garbage when it's over it
+	char* MessageAsChar = &MessageAsStdString[0];
+
+	// Send message to update the body type on service
+	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
+		(MessageAsChar, RegionOwnerPhysicsServiceId);
+
+	RPES_LOG_INFO(TEXT("Update PSDActor BodyType response: %s"),
+		*Response);
+}
+
 void APhysicsServiceRegion::DestroyPSDActorOnPhysicsRegion
 	(APSDActorBase* PSDActorToDestroy)
 {
@@ -768,4 +796,48 @@ void APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion(APSDActorBase*
 	// Destroy the OtherActor, as now he will be simulated inside this region
 	ExitedActor->Destroy();
 	*/
+}
+
+void APhysicsServiceRegion::RemovePSDActorOwnershipFromRegion
+	(APSDActorBase* TargetPSDActor)
+{
+	RPES_LOG_WARNING(TEXT("Removing PSDActor \"%s\" ownership from region "
+		"(id:%d)"), *TargetPSDActor->GetName(), RegionOwnerPhysicsServiceId);
+
+	// Get the PSDActor body id
+	const auto PSDActorBodyIdOnPhysicsService = 
+		TargetPSDActor->GetPSDActorBodyIdOnPhysicsService();
+
+	// Check if this region owns this PSDActor
+	if (!DynamicPSDActorsOnRegion.Contains(PSDActorBodyIdOnPhysicsService))
+	{
+		RPES_LOG_ERROR(TEXT("Requested to remove PSDActor \"%s\" ownership "
+			"from region (id:%d), but region does not own the target "
+			"PSDActor"), *TargetPSDActor->GetName(),
+			RegionOwnerPhysicsServiceId);
+		return;
+	}
+
+	// Remove the PSDActor from dynamic PSDActors map so this region wont
+	// try to update it
+	DynamicPSDActorsOnRegion.Remove(PSDActorBodyIdOnPhysicsService);
+}
+
+void APhysicsServiceRegion::AddPSDActorOwnershipToRegion
+	(APSDActorBase* TargetPSDActor)
+{
+	RPES_LOG_WARNING(TEXT("Adding PSDActor \"%s\" ownership to region "
+		"(id:%d)"), *TargetPSDActor->GetName(), RegionOwnerPhysicsServiceId);
+
+	// Get the PSDActor body id
+	const auto PSDActorBodyIdOnPhysicsService =
+		TargetPSDActor->GetPSDActorBodyIdOnPhysicsService();
+
+	// Update the PSDActor's owner physics service id
+	TargetPSDActor->SetActorOwnerPhysicsServiceId(RegionOwnerPhysicsServiceId);
+
+	// Add the PSDActor to this region's DynamicPSDActors so it will start to
+	// update it
+	DynamicPSDActorsOnRegion.Add(PSDActorBodyIdOnPhysicsService, 
+		TargetPSDActor);
 }

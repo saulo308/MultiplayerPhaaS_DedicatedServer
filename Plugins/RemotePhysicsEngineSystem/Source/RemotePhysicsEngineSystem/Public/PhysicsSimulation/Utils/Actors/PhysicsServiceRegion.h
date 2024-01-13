@@ -54,6 +54,18 @@ public:
 		{ return DynamicPSDActorsOnRegion; }
 
 public:
+	/** */
+	void UpdatePSDActorBodyType(const APSDActorBase* TargetPSDActor,
+		const FString& NewBodyType);
+
+	/** */
+	void RemovePSDActorOwnershipFromRegion
+		(class APSDActorBase* TargetPSDActor);
+
+	/** */
+	void AddPSDActorOwnershipToRegion(class APSDActorBase* TargetPSDActor);
+
+public:
 	/** 
 	* Intitializes the physics service region. This will connect to the physics
 	* service given the server ip address set on the properties. Once 

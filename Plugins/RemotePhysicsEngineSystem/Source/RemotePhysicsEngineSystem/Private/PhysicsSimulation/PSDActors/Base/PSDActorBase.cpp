@@ -83,8 +83,8 @@ void APSDActorBase::GetLifetimeReplicatedProps
 
 FString APSDActorBase::GetPhysicsServiceInitializationString()
 {
-	RPES_LOG_ERROR(TEXT("Do not instantiate PSDActorBase directly. \
-		GetPhysicsServiceInitializationString() should be overwritten."));
+	RPES_LOG_ERROR(TEXT("Do not instantiate PSDActorBase directly. "
+		"GetPhysicsServiceInitializationString() should be overwritten."));
 	return FString();
 }
 
@@ -115,9 +115,6 @@ void APSDActorBase::UpdatePSDActorStatusOnRegion
 	// If on server, update it
 	if (HasAuthority())
 	{
-		RPES_LOG_INFO(TEXT("Updating PSDActor's (BodyId: %d) region status \
-			on server."), PSDActorBodyIdOnPhysicsService);
-			
 		// Update the current PSDActor physics region status
 		CurrentPSDActorPhysicsRegionStatus = NewPhysicsRegionStatus;
 	}
@@ -125,20 +122,20 @@ void APSDActorBase::UpdatePSDActorStatusOnRegion
 
 void APSDActorBase::OnEnteredPhysicsRegion(int32 EnteredPhysicsRegionId)
 {
+	RPES_LOG_WARNING(TEXT("Body \"%s\" has entried region id: %d"),
+		*GetName(), EnteredPhysicsRegionId);
 	OnActorEnteredPhysicsRegion.Broadcast(this, EnteredPhysicsRegionId);
 }
 
 void APSDActorBase::OnExitedPhysicsRegion(int32 ExitedPhysicsRegionId)
 {
+	RPES_LOG_WARNING(TEXT("Body \"%s\" has exited region id: %d"), 
+		*GetName(), ExitedPhysicsRegionId);
 	OnActorExitedPhysicsRegion.Broadcast(this, ExitedPhysicsRegionId);
 }
 
 void APSDActorBase::OnRep_PhysicsRegionStatusUpdated()
 {
-	RPES_LOG_INFO(TEXT("New status of body (id: %d) is \"%s\"."),
-		PSDActorBodyIdOnPhysicsService,
-		*UEnum::GetValueAsString(CurrentPSDActorPhysicsRegionStatus));
-
 	// Switch the enum and set the new physics region status string
 	FString NewPhysicsRegionStatusAsString = FString();
 	switch (CurrentPSDActorPhysicsRegionStatus)
@@ -163,9 +160,6 @@ void APSDActorBase::OnRep_PhysicsRegionStatusUpdated()
 
 void APSDActorBase::OnRep_PSDActorBodyIdOnPhysicsServiceUpdated()
 {
-	RPES_LOG_WARNING(TEXT("PSDActor body id updated: %d"),
-		PSDActorBodyIdOnPhysicsService);
-
 	// Update the text render component
 	ActorBodyIdTextRenderComponent->SetText
 		(FText::AsNumber(PSDActorBodyIdOnPhysicsService));
