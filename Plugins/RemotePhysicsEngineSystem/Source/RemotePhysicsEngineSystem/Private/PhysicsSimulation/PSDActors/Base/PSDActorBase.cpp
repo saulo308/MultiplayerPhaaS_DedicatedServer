@@ -37,8 +37,9 @@ APSDActorBase::APSDActorBase()
 	// Set this actor to replicate as it will spawn on the server
 	bReplicates = true;
 	SetReplicateMovement(true);
- 
-	PSDActorBodyIdOnPhysicsService = GetUniqueID();
+
+	// Set the actor's BodyID as the UniqueID
+	PSDActorBodyId = GetUniqueID();
 }
 
 void APSDActorBase::BeginPlay()
@@ -48,8 +49,8 @@ void APSDActorBase::BeginPlay()
 	// Set the actor's body id on the server
 	if (HasAuthority())
 	{
-		// Set the actor's BodyID on the physics service as the UniqueID
-		PSDActorBodyIdOnPhysicsService = GetUniqueID();
+		// Set the actor's BodyID as the UniqueID
+		PSDActorBodyId = GetUniqueID();
 	}
 }
 
@@ -76,8 +77,8 @@ void APSDActorBase::GetLifetimeReplicatedProps
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(APSDActorBase, ActorOwnerPhysicsServiceId);
-	DOREPLIFETIME(APSDActorBase, PSDActorBodyIdOnPhysicsService);
+	DOREPLIFETIME(APSDActorBase, ActorOwnerPhysicsServiceRegionId);
+	DOREPLIFETIME(APSDActorBase, PSDActorBodyId);
 	DOREPLIFETIME(APSDActorBase, CurrentPSDActorPhysicsRegionStatus);
 }
 
@@ -122,15 +123,11 @@ void APSDActorBase::UpdatePSDActorStatusOnRegion
 
 void APSDActorBase::OnEnteredPhysicsRegion(int32 EnteredPhysicsRegionId)
 {
-	RPES_LOG_WARNING(TEXT("Body \"%s\" has entried region id: %d"),
-		*GetName(), EnteredPhysicsRegionId);
 	OnActorEnteredPhysicsRegion.Broadcast(this, EnteredPhysicsRegionId);
 }
 
 void APSDActorBase::OnExitedPhysicsRegion(int32 ExitedPhysicsRegionId)
 {
-	RPES_LOG_WARNING(TEXT("Body \"%s\" has exited region id: %d"), 
-		*GetName(), ExitedPhysicsRegionId);
 	OnActorExitedPhysicsRegion.Broadcast(this, ExitedPhysicsRegionId);
 }
 
@@ -158,9 +155,8 @@ void APSDActorBase::OnRep_PhysicsRegionStatusUpdated()
 		(FText::FromString(*NewPhysicsRegionStatusAsString));
 }
 
-void APSDActorBase::OnRep_PSDActorBodyIdOnPhysicsServiceUpdated()
+void APSDActorBase::OnRep_PSDActorBodyId()
 {
 	// Update the text render component
-	ActorBodyIdTextRenderComponent->SetText
-		(FText::AsNumber(PSDActorBodyIdOnPhysicsService));
+	ActorBodyIdTextRenderComponent->SetText(FText::AsNumber(PSDActorBodyId));
 }

@@ -41,9 +41,10 @@ APSDActorBase* UPSDActorSpawnerComponent::SpawnPSDActor
 		(PSDActorToSpawn, SpawnTransform, nullptr, nullptr, 
 		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	
-	// Set the actor's owner physics service Id based on the region he is 
-	// spawning in
-	SpawnedActor->SetActorOwnerPhysicsServiceId(RegionOwnerPhysicsServiceId);
+	// Set the actor's owner physics service reguion id based on the region 
+	// he is spawning in
+	SpawnedActor->SetActorOwnerPhysicsServiceRegionId
+		(RegionOwnerPhysicsServiceId);
 
 	// Finish spawning the actor
 	SpawnedActor->FinishSpawning(SpawnTransform);

@@ -49,20 +49,54 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 public:
-	/** */
+	/** 
+	* Getter to the cached dynamic PSDActors on the region. In constrats with
+	* the "GetAllDynamicPSDActorOnRegion()" method, this will only return the 
+	* TMap that should already be filled, instead of actually getting all 
+	* actors inside of the region. 
+	* 
+	* @note This is done to avoid processing getting all actors again. Thus, 
+	* make sure that the TMap is already defined before using this method.
+	* 
+	* @return The DynamicPSDActorsOnRegion TMap already filled previously
+	*/
 	TMap<int32, class APSDActorBase*> GetCachedDynamicPSDActorsOnRegion()
 		{ return DynamicPSDActorsOnRegion; }
 
 public:
-	/** */
+	/**
+	* Updates a given PSDActor body type on this region. This will send a 
+	* message to the physics service to update the body type.
+	* 
+	* @param TargetPSDActor The PSDActor to update the body type
+	* @param NewBodyType The new body type for the given PSDActor 
+	* ("clone" or "primary")
+	*/
 	void UpdatePSDActorBodyType(const APSDActorBase* TargetPSDActor,
 		const FString& NewBodyType);
 
-	/** */
+	/** 
+	* Removes the ownership of this region from a given PSDActor. The process
+	* of removing the ownership means that this physics service region will no
+	* longer update the PSDActor's Transform on the update phase. Thus, this 
+	* will remove the PSDActor from the DynamicPSDActorsOnRegion.
+	* 
+	* @param TargetPSDActor The PSDActor reference to remove the ownership from
+	* this physics service region
+	*/
 	void RemovePSDActorOwnershipFromRegion
 		(class APSDActorBase* TargetPSDActor);
 
-	/** */
+	/** 
+	* Adds the ownership of this region to a given PSDActor. The process of 
+	* adding the ownership means that this physics service region will update
+	* the PSDActor's Transform on the update phase. Thus, will add the PSDActor
+	* to the DynamicPSDActors on region and update the PSDActor's owner physics
+	* service region id
+	* 
+	* @param TargetPSDActor The PSDActor reference to add the ownership to this
+	* physics service region
+	*/
 	void AddPSDActorOwnershipToRegion(class APSDActorBase* TargetPSDActor);
 
 public:
@@ -91,24 +125,13 @@ public:
 	*/
 	void ClearPhysicsServiceRegion();
 
-
-	void DestroyPSDActorOnPhysicsRegion(APSDActorBase* PSDActorToDestroy);
-
-	/**
-	* Spawns a PSDActor from a physics service clone. This happens once a
-	* PSDActor exits his previous PhysicsServiceRegion. When this happens, we
-	* may spawn the PSDActor in this region, finishing the PSDActor migration.
-	*
-	* @note It is important to note that the PSDActor's clone has to
-	* previously exist as a clone on this physics region's phyiscs service
-	*
-	* @param TargetClonedPSDActor The PSDActor that will be spawned from the
-	* physics service
+	/** 
+	* Destroys a given PSDActor on this physics region. This will destroy the
+	* PSDActor as well as remove it from the physics service.
 	* 
-	* @return 
+	* @param PSDActorToDestroy The PSDActor to destroy
 	*/
-	APSDActorBase* SpawnPSDActorFromPhysicsServiceClone
-		(const APSDActorBase* TargetClonedPSDActor);
+	void DestroyPSDActorOnPhysicsRegion(APSDActorBase* PSDActorToDestroy);
 
 	/**
 	* Adds a PSDActor clone on the physics service. This is needed once a
@@ -147,17 +170,6 @@ private:
 	void OnRegionExited(UPrimitiveComponent* OverlappedComponent, 
 		AActor* OtherActor, UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex);
-
-	/** 
-	* Called when a actor has fully exited his own physics region. This is
-	* used when a PSDActor enters this physics region. We will only migrate him
-	* to this physics region once he has fully exited his own region
-	*
-	* @param ExitedActor The PSDActor that has fully exited his own physics 
-	* region
-	*/
-	UFUNCTION()
-	void OnActorFullyExitedOwnPhysicsRegion(APSDActorBase* ExitedActor);
 
 private:
 	/** 
@@ -238,14 +250,6 @@ private:
 	* the physics service and the value is the PSD actor reference itself.
 	*/
 	TMap<int32, class APSDActorBase*> DynamicPSDActorsOnRegion;
-
-	/**
-	* The pending migration PSDActors list. This is used to add PSDActors that
-	* has entered this physics region. Once they do, they will start a 
-	* "pending migration" phase, which is only completed once the PSDActor
-	* fully exits his own phyiscs region.
-	*/
-	TArray<class APSDActorBase*> PendingMigrationPSDActors;
 
 private:
 	/** 

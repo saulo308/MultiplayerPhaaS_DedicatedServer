@@ -7,18 +7,46 @@
 #include "ExternalCommunication/Sockets/SocketClientThreadWorker.h"
 #include "PSDActorsCoordinator.generated.h"
 
+/** 
+* This enum defines the PSDActor's body type on the physics region. It may
+* have two types:
+* 
+* Primary: The PSDActor is currently being driven by the physics service region.
+* Thus, the region is currently updating the PSDActor's Transform
+* 
+* Clone: The PSDActor exists only on the physics service, and its not being
+* currently driven by the given physics service region. Thus, the region is NOT
+* updating its Transform. A clone needs to exist on the physics service region
+* on shared regions, but we cannot have two services updating its Transform.
+*/
 enum class EPSDActorBodyTypeOnPhysicsServiceRegion : uint8
 {
 	Primary,
 	Clone
 };
 
+/** 
+* The PSDActor physics service region footprint. This will keep the data of a 
+* given PSDActor inside a physics service region. Thus, it will have the 
+* physics service region id he is in and also the body type on the given
+* physics service region.
+* 
+* A PSDActor may be inside a shared region, in which on a given region it may
+* have a "Primary" body type (being driven by this physics service region),
+* while on another it may have a "Clone" body type, meaning that the physics
+* service only has a clone of the given PSDActor
+* 
+* @see EPSDActorBodyTypeOnPhysicsServiceRegion
+*/
 struct FPSDActorPhysicsServiceRegionFootprint
 {
-	/** */
+	/** The physics service region id that this PSDActor is currently in */
 	int32 PhysicsServiceRegionId = 0;
 
-	/** */
+	/** 
+	* The body type on the physics service of this PSDActor on the given
+	* physics service region.
+	*/
 	EPSDActorBodyTypeOnPhysicsServiceRegion BodyTypeOnPhysicsServiceRegion;
 };
 
@@ -104,12 +132,24 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
-	/** */
+	/**
+	* Called once a PSDActor has entered a physics service region.
+	*
+	* @param EnteredPSDActor The PSDActor that has entered the given region
+	* @param EnteredPhysicsRegionId The id from the physics service region the
+	* PSDActor has entered
+	*/
 	UFUNCTION()
 	void OnPSDActorEnteredPhysicsRegion(APSDActorBase* EnteredPSDActor,
 		int32 EnteredPhysicsRegionId);
 
-	/** */
+	/** 
+	* Called once a PSDActor has exited a physics service region.
+	*
+	* @param ExitedPSDActor The PSDActor that has exited the given region
+	* @param ExitedPhysicsRegionId The id from the physics service region the
+	* PSDActor has exited
+	*/
 	UFUNCTION()
 	void OnPSDActorExitPhysicsRegion(APSDActorBase* ExitedPSDActor,
 		int32 ExitedPhysicsRegionId);
@@ -127,14 +167,15 @@ private:
 	void GetAllPhysicsServiceRegions();
 
 private:
-	/** 
-	* The list of PSD actors to simulate. The key is a unique Id to identify
-	* it on the physics service and the value is the PSD actor reference 
-	* itself.
+	/**
+	* The map that stores the info of PSDActors that are inside shared 
+	* physics service regions. As key we have the reference to the PSDActor
+	* and as value we have a list of FPSDActorPhysicsServiceRegionFootprint
+	* This will store the data of the PSDActor on the given physics service
+	* region.
+	* 
+	* @see FPSDActorPhysicsServiceRegionFootprint
 	*/
-	//TMap<uint32, class APSDActorBase*> PSDActorsToSimulateMap;
-
-	/** */
 	TMap<class APSDActorBase*, TArray<FPSDActorPhysicsServiceRegionFootprint>> 
 		SharedRegionsPSDActors;
 
@@ -164,6 +205,6 @@ private:
 	TMap<int32, TPair<class FSocketClientThreadWorker, class FRunnableThread*>>
 		SocketClientThreadsInfoList;
 
-	/** */
+	/** Counts the amount of step the physics system */
 	uint32 StepPhysicsCounter = 0;
 };

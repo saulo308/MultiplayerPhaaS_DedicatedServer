@@ -109,10 +109,9 @@ void APhysicsServiceRegion::GetAllDynamicPSDActorOnRegion()
 		// If not, it is a dynamic body.
 		// Add to map that stores all the dynamic PSD actors so they can be
 		// updated on each physics step
-		// The key is the PSDActor's body ID on the physics service
+		// The key is the PSDActor's body ID
 		// The value is the reference to the actor
-		DynamicPSDActorsOnRegion.Add
-			(PSDActor->GetPSDActorBodyIdOnPhysicsService(), PSDActor);
+		DynamicPSDActorsOnRegion.Add(PSDActor->GetPSDActorBodyId(), PSDActor);
 	}
 }
 
@@ -132,19 +131,6 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 	// to the initialization message
 	for (auto& PSDActor : PSDActorsOnRegion)
 	{
-		// Get the current actor's owning server id
-		const auto CurrentActorOwnerServerId =
-			PSDActor->GetActorOwnerPhysicsServiceId();
-
-		// Check if the PSDActor owning server id is the same as this region's
-		// physics service id. If not, something went wrong
-		if (CurrentActorOwnerServerId != RegionOwnerPhysicsServiceId)
-		{
-			RPES_LOG_ERROR(TEXT("PSDActor owning server id (%d) is not the "
-				"same as the region he is in (region ID: %d)."),
-				CurrentActorOwnerServerId, RegionOwnerPhysicsServiceId);
-		}
-
 		// Get the PSDActor physics service initialization string
 		const FString PSDActorInitializationMessage =
 			PSDActor->GetPhysicsServiceInitializationString();
@@ -227,9 +213,6 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion
 			DynamicPSDActorsOnRegion.Contains(ActorID);
 		if (!bDoesActorExistOnMap)
 		{
-			//MPHAAS_LOG_ERROR
-				//(TEXT("Could not find dynamic actor with ID (%d) on physics service region (id: %d)."),
-				//ActorID, RegionOwnerPhysicsServiceId);
 			continue;
 		}
 
@@ -325,12 +308,11 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 		(NewSphereLocation, RegionOwnerPhysicsServiceId);
 
 	// Get the new sphere ID as the PSDActor BodyID
-	const int32 NewSphereID =
-		SpawnedSphere->GetPSDActorBodyIdOnPhysicsService();
+	const int32 NewSphereBodyId = SpawnedSphere->GetPSDActorBodyId();
 
 	// Add the sphere to the dynamic PSDActors map so it's Transform can be 
 	// updated on next step
-	DynamicPSDActorsOnRegion.Add(NewSphereID, SpawnedSphere);
+	DynamicPSDActorsOnRegion.Add(NewSphereBodyId, SpawnedSphere);
 
 	// Create the message to send server
 	// The template is:
@@ -339,7 +321,7 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 	// MessageEnd\n"
 	const FString SpawnNewPSDSphereMessage =
 		FString::Printf(TEXT("AddBody\nspere;%d;primary;%f;%f;%f\nMessageEnd\n"), 
-		NewSphereID, NewSphereLocation.X, NewSphereLocation.Y,
+		NewSphereBodyId, NewSphereLocation.X, NewSphereLocation.Y,
 		NewSphereLocation.Z);
 
 	// Convert message to std string
@@ -360,12 +342,11 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 	(const APSDActorBase* PSDActorToClone)
 {
-	RPES_LOG_WARNING(TEXT("Adding PSDActor \"%s\" clone on region (id: %d)"),
+	RPES_LOG_INFO(TEXT("Adding PSDActor \"%s\" clone on region (id: %d)"),
 		*PSDActorToClone->GetName(), RegionOwnerPhysicsServiceId);
 
-	// Get the PSDActor ID to use it as the body ID on the physics service
-	const int32 PSDActorBodyID = 
-		PSDActorToClone->GetPSDActorBodyIdOnPhysicsService();
+	// Get the PSDActor ID to use it as the body ID
+	const int32 PSDActorBodyID = PSDActorToClone->GetPSDActorBodyId();
 
 	// Get the PSDActor to clone location as string
 	const auto PSDActorCloneLocation = 
@@ -396,72 +377,6 @@ void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 		*Response);
 }
 
-APSDActorBase* APhysicsServiceRegion::SpawnPSDActorFromPhysicsServiceClone
-	(const APSDActorBase* TargetClonedPSDActor)
-{
-	// Check if we have a valid PSDActors spawner. If not, find it
-	check(PSDActorSpawner);
-
-	// Get the PSDActor location to spawn
-	const FVector NewPSDActorLocation = 
-		TargetClonedPSDActor->GetActorLocation();
-
-	// Spawn the new sphere on the new sphere location and this region's owner
-	// physics service ID (The ID is needed to avoid the "OnRegionEntry" being
-	// called on the newly spawned actor).
-	const auto SpawnedPSDActor = PSDActorSpawner->SpawnPSDActor
-		(NewPSDActorLocation, RegionOwnerPhysicsServiceId);
-
-	RPES_LOG_WARNING(TEXT("Spawning new PSDActor (%s) from clone \"%s\" on "
-		"region(id: %d) at pos: %s"), *SpawnedPSDActor->GetName(), 
-		*TargetClonedPSDActor->GetName(), RegionOwnerPhysicsServiceId, 
-		*NewPSDActorLocation.ToString());
-
-	// Get the cloned PSDActor body ID so the new PSDActor sphere has the
-	// same body ID as his clone
-	const auto ClonedPSDActorBodyID = 
-		TargetClonedPSDActor->GetPSDActorBodyIdOnPhysicsService();
-
-	// Override the spawned actor's PSDActor body ID on physics service to be
-	// the same as his clone
-	SpawnedPSDActor->SetPSDActorBodyIdOnPhysicsService(ClonedPSDActorBodyID);
-
-	// Set the new PSDActor status on this region, as it now is inside a
-	// region
-	SpawnedPSDActor->UpdatePSDActorStatusOnRegion
-		(EPSDActorPhysicsRegionStatus::InsideRegion);
-
-	// Add the sphere to the dynamic PSDActors map so it's Transform can be 
-	// updated on next step
-	DynamicPSDActorsOnRegion.Add(ClonedPSDActorBodyID, SpawnedPSDActor);
-
-	// Create the message to send server to update the body type. This is 
-	// needed as the body is now primary for this service
-	// The template is:
-	// "UpdateBodyType\n
-	// Id; newBodyType\n
-	// MessageEnd\n"
-	const FString UpdateBodyTypeMessage =
-		FString::Printf(TEXT("UpdateBodyType\n%d;primary\nMessageEnd\n"),
-		ClonedPSDActorBodyID);
-
-	// Convert message to std string
-	std::string MessageAsStdString(TCHAR_TO_UTF8(*UpdateBodyTypeMessage));
-
-	// Convert message to char*. This is needed as some UE converting has the
-	// limitation of 128 bytes, returning garbage when it's over it
-	char* MessageAsChar = &MessageAsStdString[0];
-
-	// Send message to update the body type on service
-	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-		(MessageAsChar, RegionOwnerPhysicsServiceId);
-
-	RPES_LOG_INFO(TEXT("Update PSDActor BodyType response: %s"),
-		*Response);
-
-	return SpawnedPSDActor;
-}
-
 void APhysicsServiceRegion::UpdatePSDActorBodyType
 	(const APSDActorBase* TargetPSDActor, const FString& NewBodyType)
 {
@@ -469,11 +384,11 @@ void APhysicsServiceRegion::UpdatePSDActorBodyType
 	// needed as the body is now primary for this service
 	// The template is:
 	// "UpdateBodyType\n
-	// Id; newBodyType\n
+	// BodyId; newBodyType\n
 	// MessageEnd\n"
 	const FString UpdateBodyTypeMessage =
 		FString::Printf(TEXT("UpdateBodyType\n%d;%s\nMessageEnd\n"),
-		TargetPSDActor->GetPSDActorBodyIdOnPhysicsService(), *NewBodyType);
+		TargetPSDActor->GetPSDActorBodyId(), *NewBodyType);
 
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*UpdateBodyTypeMessage));
@@ -496,10 +411,8 @@ void APhysicsServiceRegion::DestroyPSDActorOnPhysicsRegion
 	// First, remove the PSDActor from the physics service
 	RemovePSDActorFromPhysicsService(PSDActorToDestroy);
 
-	// Get the actor's body id on physics service to find it on the dynamic 
-	// PSDActors map
-	const auto PSDActorBodyId =
-		PSDActorToDestroy->GetPSDActorBodyIdOnPhysicsService();
+	// Get the actor's body id to find it on the dynamic PSDActors map
+	const auto PSDActorBodyId = PSDActorToDestroy->GetPSDActorBodyId();
 
 	// Remove this PSDActor from the dynamic PSDActors map
 	DynamicPSDActorsOnRegion.Remove(PSDActorBodyId);
@@ -522,14 +435,13 @@ void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
 		return;
 	}
 
-	// Get the actor's body ID on the physics service 
-	const auto BodyIdToRemove = 
-		PSDActorToRemove->GetPSDActorBodyIdOnPhysicsService();
+	// Get the actor's body ID
+	const auto BodyIdToRemove = PSDActorToRemove->GetPSDActorBodyId();
 
 	// Create the message to send to the physics service
 	// The template is:
 	// "RemoveBody\n
-	// Id\n
+	// BodyId\n
 	// MessageEnd\n"
 	const FString RemoveBodyMessage = 
 		FString::Printf(TEXT("RemoveBody\n%d\nMessageEnd\n"), BodyIdToRemove);
@@ -568,7 +480,6 @@ void APhysicsServiceRegion::ClearPhysicsServiceRegion()
 
 	// Clear the map and list
 	DynamicPSDActorsOnRegion.Empty();
-	PendingMigrationPSDActors.Empty();
 
 	// Close socket connection on this physics service (given its ID)
 	const bool bWasCloseSocketSuccess =
@@ -606,8 +517,8 @@ TArray<APSDActorBase*> APhysicsServiceRegion::GetAllPSDActorsOnRegion()
 		// Add it to the list of actors on this region
 		PSDActorsOnRegion.Add(FoundActorAsPSDActorBase);
 
-		// Set the PSDActor owner physics service id
-		FoundActorAsPSDActorBase->SetActorOwnerPhysicsServiceId
+		// Set the PSDActor owner physics service region id
+		FoundActorAsPSDActorBase->SetActorOwnerPhysicsServiceRegionId
 			(RegionOwnerPhysicsServiceId);
 
 		// Set the new PSDActor status on this region, as it now resides
@@ -648,55 +559,6 @@ void APhysicsServiceRegion::OnRegionEntry
 
 	// Call the method to when he enteres a new physics service region
 	OtherActorAsPSDActor->OnEnteredPhysicsRegion(RegionOwnerPhysicsServiceId);
-
-	/**
-	// Get the OtherActor physics service ID
-	const auto OtherActorPhysicsServiceId = 
-		OtherActorAsPSDActor->GetActorOwnerPhysicsServiceId();
-	
-	// If this actor already belongs to this region, ignore it. We want to 
-	// process only PSDActors coming from other regions
-	if (OtherActorPhysicsServiceId == RegionOwnerPhysicsServiceId)
-	{
-		return;
-	}
-
-	// If the actor is already inside a region and enters this region, then
-	// now he is inside a shared region
-	if (OtherActorAsPSDActor->GetPSDActorPhysicsRegionStatus() ==
-		EPSDActorPhysicsRegionStatus::InsideRegion)
-	{
-		RPES_LOG_WARNING(TEXT("Actor \"%s\" entried region (id: %d) from \
-			region with physics service owning id: %d (pos: %s)"),
-			*OtherActorAsPSDActor->GetName(), RegionOwnerPhysicsServiceId,
-			OtherActorPhysicsServiceId,
-			*OtherActorAsPSDActor->GetActorLocation().ToString());
-
-		// Add the PSDActor clone on this physics service
-		AddPSDActorCloneOnPhysicsService(OtherActorAsPSDActor);
-
-		// Add the PSDActor to the pending migration list
-		PendingMigrationPSDActors.Add(OtherActorAsPSDActor);
-
-		// Bind the actor's exited event on the callback
-		OtherActorAsPSDActor->OnActorExitedCurrentPhysicsRegion.AddDynamic(this,
-			&APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion);
-
-		// Update the PSDActor's region status
-		OtherActorAsPSDActor->UpdatePSDActorStatusOnRegion
-			(EPSDActorPhysicsRegionStatus::SharedRegion);
-
-		// Call the method to when he eneters a new physics service region
-		OtherActorAsPSDActor->OnEnteredNewPhysicsRegion();
-
-		return;
-	}
-
-	// If actor is not coming from a previous PSDActor region, we must treat
-	// it somehow. They engine may be simulating its 
-	RPES_LOG_WARNING(TEXT("A PSDActor has entered a region without being \
-		previously inside a region. This is not yet treated."));
-	*/
 }
 
 void APhysicsServiceRegion::OnRegionExited
@@ -729,87 +591,19 @@ void APhysicsServiceRegion::OnRegionExited
 	// physics service region
 	OtherActorAsPSDActor->OnExitedPhysicsRegion(RegionOwnerPhysicsServiceId);
 
-	/*
-	// Get the OtherActor physics service ID
-	const auto OtherActorPhysicsServiceId =
-		OtherActorAsPSDActor->GetActorOwnerPhysicsServiceId();
-
-	// If this actor does not belong to this region, ignore it. We want only
-	// to process PSDActors inside this region
-	if (OtherActorPhysicsServiceId != RegionOwnerPhysicsServiceId)
-	{
-		return;
-	}
-
-	RPES_LOG_WARNING(TEXT("Actor \"%s\" exited region with physics service \
-		owning id: %d."), *OtherActorAsPSDActor->GetName(), 
-		RegionOwnerPhysicsServiceId);
-	
-	// Remove this PSDActor from the phyiscs service as it is no longer
-	// responsible for simulating it
-	RemovePSDActorFromPhysicsService(OtherActorAsPSDActor);
-
-	// Get the actor's body id on physics service to find it on the dynamic 
-	// PSDActors map
-	const auto PSDActorBodyId = 
-		OtherActorAsPSDActor->GetPSDActorBodyIdOnPhysicsService();
-
-	// Remove this PSDActor from the dynamic PSDActors map
-	DynamicPSDActorsOnRegion.Remove(PSDActorBodyId);
-
-	// Call the method on the PSDActorBase so he knows he has exited this
-	// physics service region
-	OtherActorAsPSDActor->OnExitedPhysicsRegion();
-
-	// Set the new PSDActor status on this region, as it now exited the region
-	OtherActorAsPSDActor->UpdatePSDActorStatusOnRegion
-		(EPSDActorPhysicsRegionStatus::NoRegion);
-	*/
-}
-
-void APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion(APSDActorBase*
-	ExitedActor)
-{
-	/*
-	RPES_LOG_INFO(TEXT("Physics service region (id:%d) processed actor \
-		\"%s\" fully exiting previous region."), RegionOwnerPhysicsServiceId,
-		*ExitedActor->GetName());
-
-	// Remove the callback
-	ExitedActor->OnActorExitedCurrentPhysicsRegion.RemoveDynamic(this,
-		&APhysicsServiceRegion::OnActorFullyExitedOwnPhysicsRegion);
-
-	// Check if this exited actor is on the pending migration list
-	if (!PendingMigrationPSDActors.Contains(ExitedActor))
-	{
-		RPES_LOG_WARNING(TEXT("Actor was pending migration but is not on \
-			migration list: %s"), *ExitedActor->GetName());
-		return;
-	}
-
-	// Spawn a new PSD sphere on this region where the other actor is
-	SpawnPSDActorFromPhysicsServiceClone(ExitedActor);
-
-	// Remove the actor from the pending migration list
-	PendingMigrationPSDActors.Remove(ExitedActor);
-
-	// Destroy the OtherActor, as now he will be simulated inside this region
-	ExitedActor->Destroy();
-	*/
 }
 
 void APhysicsServiceRegion::RemovePSDActorOwnershipFromRegion
 	(APSDActorBase* TargetPSDActor)
 {
-	RPES_LOG_WARNING(TEXT("Removing PSDActor \"%s\" ownership from region "
+	RPES_LOG_INFO(TEXT("Removing PSDActor \"%s\" ownership from region "
 		"(id:%d)"), *TargetPSDActor->GetName(), RegionOwnerPhysicsServiceId);
 
 	// Get the PSDActor body id
-	const auto PSDActorBodyIdOnPhysicsService = 
-		TargetPSDActor->GetPSDActorBodyIdOnPhysicsService();
+	const auto PSDActorBodyId = TargetPSDActor->GetPSDActorBodyId();
 
 	// Check if this region owns this PSDActor
-	if (!DynamicPSDActorsOnRegion.Contains(PSDActorBodyIdOnPhysicsService))
+	if (!DynamicPSDActorsOnRegion.Contains(PSDActorBodyId))
 	{
 		RPES_LOG_ERROR(TEXT("Requested to remove PSDActor \"%s\" ownership "
 			"from region (id:%d), but region does not own the target "
@@ -820,24 +614,24 @@ void APhysicsServiceRegion::RemovePSDActorOwnershipFromRegion
 
 	// Remove the PSDActor from dynamic PSDActors map so this region wont
 	// try to update it
-	DynamicPSDActorsOnRegion.Remove(PSDActorBodyIdOnPhysicsService);
+	DynamicPSDActorsOnRegion.Remove(PSDActorBodyId);
 }
 
 void APhysicsServiceRegion::AddPSDActorOwnershipToRegion
 	(APSDActorBase* TargetPSDActor)
 {
-	RPES_LOG_WARNING(TEXT("Adding PSDActor \"%s\" ownership to region "
+	RPES_LOG_INFO(TEXT("Adding PSDActor \"%s\" ownership to region "
 		"(id:%d)"), *TargetPSDActor->GetName(), RegionOwnerPhysicsServiceId);
 
 	// Get the PSDActor body id
-	const auto PSDActorBodyIdOnPhysicsService =
-		TargetPSDActor->GetPSDActorBodyIdOnPhysicsService();
+	const auto PSDActorBodyId = TargetPSDActor->GetPSDActorBodyId();
 
-	// Update the PSDActor's owner physics service id
-	TargetPSDActor->SetActorOwnerPhysicsServiceId(RegionOwnerPhysicsServiceId);
+	// Update the PSDActor's owner physics service region id
+	TargetPSDActor->SetActorOwnerPhysicsServiceRegionId
+		(RegionOwnerPhysicsServiceId);
 
 	// Add the PSDActor to this region's DynamicPSDActors so it will start to
 	// update it
-	DynamicPSDActorsOnRegion.Add(PSDActorBodyIdOnPhysicsService, 
+	DynamicPSDActorsOnRegion.Add(PSDActorBodyId,
 		TargetPSDActor);
 }

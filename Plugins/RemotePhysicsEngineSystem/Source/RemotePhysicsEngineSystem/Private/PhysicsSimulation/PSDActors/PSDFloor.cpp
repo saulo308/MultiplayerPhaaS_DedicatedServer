@@ -22,8 +22,8 @@ FString APSDFloor::GetPhysicsServiceInitializationString()
 	// "ActorTypeString; BodyID; bodyType; InitialPosX; InitialPosY; 
 	//	InitialPosY\n"
 	PSDActorPhysicsServiceInitializationString +=
-		FString::Printf(TEXT("floor;%d;primary;%s\n"), 
-		PSDActorBodyIdOnPhysicsService, *CurrentActorLocationAsString);
+		FString::Printf(TEXT("floor;%d;primary;%s\n"), PSDActorBodyId,
+		*CurrentActorLocationAsString);
 
 	return PSDActorPhysicsServiceInitializationString;
 }

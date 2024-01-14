@@ -19,11 +19,19 @@ enum class EPSDActorPhysicsRegionStatus : uint8
 	NoRegion
 };
 
-/** */
+/** 
+* Called once the PSDActor has entered a physics service region. Will 
+* broadcast this PSDActor reference and the physics service region id he has 
+* entered.
+*/
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnActorEnteredPhysicsRegion,
 	APSDActorBase*, EnteredPSDActor, int32, EnteredPhysicsRegionId);
 
-/** */
+/**
+* Called once the PSDActor has exited a physics service region. Will
+* broadcast this PSDActor reference and the physics service region id he has
+* exited.
+*/
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnActorExitedPhysicsRegion,
 	APSDActorBase*, ExitedPSDActor, int32, ExitedPhysicsRegionId);
 
@@ -41,16 +49,21 @@ class REMOTEPHYSICSENGINESYSTEM_API APSDActorBase : public AActor
 	GENERATED_BODY()
 	
 public:
-	/** Getter to the physics service owner id */
+	/** Getter to the physics service region owner id */
 	UFUNCTION(BlueprintCallable)
-	int32 GetActorOwnerPhysicsServiceId()
-		{ return ActorOwnerPhysicsServiceId; }
+	int32 GetActorOwnerPhysicsServiceRegionId()
+		{ return ActorOwnerPhysicsServiceRegionId; }
 
-	/** Setter to the physics service owner id */
+	/** Setter to the physics service region owner id */
 	UFUNCTION(BlueprintCallable)
-	void SetActorOwnerPhysicsServiceId(const int32 NewOwnerPhysicsServiceId)
-		{ ActorOwnerPhysicsServiceId = NewOwnerPhysicsServiceId; }
+	void SetActorOwnerPhysicsServiceRegionId
+		(const int32 NewOwnerPhysicsServiceRegionId)
+		{ ActorOwnerPhysicsServiceRegionId = NewOwnerPhysicsServiceRegionId; }
 
+	/** 
+	* Getter to the PSDActor's current status on his owning physics service
+	* region 
+	*/
 	UFUNCTION(BlueprintCallable)
 	EPSDActorPhysicsRegionStatus GetPSDActorPhysicsRegionStatus()
 		{ return CurrentPSDActorPhysicsRegionStatus; }
@@ -116,10 +129,24 @@ public:
 		(EPSDActorPhysicsRegionStatus NewPhysicsRegionStatus);
 
 public:
-	/** */
+	/**
+	* Called once the PSDActor has entered a physics service region. This is 
+	* used to broadcast the delegate that this PSDActor has entered a new 
+	* region.
+	* 
+	* @param EnteredPhysicsRegionId The physics service region's id the 
+	* PSDActor has just entered
+	*/
 	void OnEnteredPhysicsRegion(int32 EnteredPhysicsRegionId);
 
-	/** */
+	/**
+	* Called once the PSDActor has exited a physics service region. This is
+	* used to broadcast the delegate that this PSDActor has exited a new
+	* region.
+	*
+	* @param ExitedPhysicsRegionId The physics service region's id the
+	* PSDActor has just exited
+	*/
 	void OnExitedPhysicsRegion(int32 ExitedPhysicsRegionId);
 
 public:
@@ -131,19 +158,18 @@ public:
 	* 
 	* @return This PSDActor's body unique ID on the physics service
 	*/
-	int32 GetPSDActorBodyIdOnPhysicsService() const
-		{ return PSDActorBodyIdOnPhysicsService; }
+	int32 GetPSDActorBodyId() const
+		{ return PSDActorBodyId; }
 
 	/** 
 	* Sets a new PSDActor body ID. This may be needed when spawning PSDActor
 	* clones. The clone should have the same ID as his replica. Thus, after
 	* being spawned, we set the PSDActor's body ID to the same as his replica.
 	* 
-	* @param NewPSDActorBodyIdOnPhysicsService The new PSDActor body ID
+	* @param NewPSDActorBodyId The new PSDActor body ID
 	*/
-	void SetPSDActorBodyIdOnPhysicsService
-		(int32 NewPSDActorBodyIdOnPhysicsService)
-		{ PSDActorBodyIdOnPhysicsService = NewPSDActorBodyIdOnPhysicsService; }
+	void SetPSDActorBodyId(int32 NewPSDActorBodyId)
+		{ PSDActorBodyId = NewPSDActorBodyId; }
 
 	/** 
 	* Returns if this PSDActor is static (should move/updated or not)
@@ -160,9 +186,9 @@ protected:
 	UFUNCTION()
 	void OnRep_PhysicsRegionStatusUpdated();
 
-	/** Called once PSDActorBodyIdOnPhysicsService is replicated */
+	/** Called once PSDActorBodyIdOn is replicated */
 	UFUNCTION()
-	void OnRep_PSDActorBodyIdOnPhysicsServiceUpdated();
+	void OnRep_PSDActorBodyId();
 
 protected:
 	/** Called when the game starts or when spawned */
@@ -192,26 +218,36 @@ public:
 	class UTextRenderComponent* ActorRegionStatusTextRender = nullptr;
 
 public:
-	/** */
+	/**
+	* Delegate called once the PSDActor has entered a physics service region. 
+	* Will broadcast this PSDActor reference and the physics service region id 
+	* he has entered.
+	*/
 	FOnActorEnteredPhysicsRegion OnActorEnteredPhysicsRegion;
 
-	/** */
+	/**
+	* Delegate called once the PSDActor has exited a physics service region.
+	* Will broadcast this PSDActor reference and the physics service region id
+	* he has exited.
+	*/
 	FOnActorExitedPhysicsRegion OnActorExitedPhysicsRegion;
 
 protected:
 	/** 
-	* The owning physics service ID. This represents the physics service that
-	* updates this PSDActor.
+	* The owning physics service region id. This represents the physics service 
+	* region that updates this PSDActor.
 	*
-	* @note This Id will be overwritten if the PSDActor is inside a 
+	* @note This id will be set once the PSDActor is inside a 
 	* PhysicsServiceRegion upon BeginPlay()
 	*/
 	UPROPERTY(BlueprintReadOnly, Replicated)
-	int32 ActorOwnerPhysicsServiceId = 0;
+	int32 ActorOwnerPhysicsServiceRegionId = 0;
 
 	/** 
-	* The current physics region status of this PSDActor. Should be updated
-	* by the owning physics region
+	* The current physics region status of this PSDActor. This will inform if
+	* the PSDActor is currently inside a region (a single region), if on a 
+	* shared region (inside more that one physics region) or if he has no
+	* region at all
 	*/
 	UPROPERTY(BlueprintReadOnly, 
 		ReplicatedUsing = OnRep_PhysicsRegionStatusUpdated)
@@ -223,9 +259,8 @@ protected:
 	* uniquely identify this PSDActor either on the world or on the physics
 	* service
 	*/
-	UPROPERTY(BlueprintReadOnly,
-		ReplicatedUsing = OnRep_PSDActorBodyIdOnPhysicsServiceUpdated)
-	int32 PSDActorBodyIdOnPhysicsService = 0;
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_PSDActorBodyId)
+	int32 PSDActorBodyId = 0;
 
 protected:
 	/** 
