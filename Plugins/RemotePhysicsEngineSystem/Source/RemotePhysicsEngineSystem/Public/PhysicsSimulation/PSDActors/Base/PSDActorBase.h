@@ -54,19 +54,19 @@ public:
 	int32 GetActorOwnerPhysicsServiceRegionId()
 		{ return ActorOwnerPhysicsServiceRegionId; }
 
+	/**
+	* Getter to the PSDActor's current status on his owning physics service
+	* region
+	*/
+	UFUNCTION(BlueprintCallable)
+	EPSDActorPhysicsRegionStatus GetPSDActorPhysicsRegionStatus()
+		{ return CurrentPSDActorPhysicsRegionStatus; }
+
 	/** Setter to the physics service region owner id */
 	UFUNCTION(BlueprintCallable)
 	void SetActorOwnerPhysicsServiceRegionId
 		(const int32 NewOwnerPhysicsServiceRegionId)
 		{ ActorOwnerPhysicsServiceRegionId = NewOwnerPhysicsServiceRegionId; }
-
-	/** 
-	* Getter to the PSDActor's current status on his owning physics service
-	* region 
-	*/
-	UFUNCTION(BlueprintCallable)
-	EPSDActorPhysicsRegionStatus GetPSDActorPhysicsRegionStatus()
-		{ return CurrentPSDActorPhysicsRegionStatus; }
 
 public:	
 	/** Sets default values for this actor's properties */
@@ -76,6 +76,16 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 public:
+	/**
+	* Returns this actor's current location as a string with ";" delimiters.
+	* This should be used to initialize the physics world on the physics
+	* service server. Each PSD actor will have a initial position equal to
+	* the engine's starting position.
+	*
+	* @return This actor's current lcoation as a string delimited by ";"
+	*/
+	virtual FString GetCurrentActorLocationAsString() const;
+
 	/**
 	* Returns the physics service initialization string. This should return
 	* a string according to the initialization message template:
@@ -87,18 +97,44 @@ public:
 	* @return The physics service initialization string for this PSDActor
 	*/
 	virtual FString GetPhysicsServiceInitializationString();
-	
-	/** 
-	* Returns this actor's current location as a string with ";" delimiters.
-	* This should be used to initialize the physics world on the physics
-	* service server. Each PSD actor will have a initial position equal to
-	* the engine's starting position.
-	* 
-	* @return This actor's current lcoation as a string delimited by ";"
-	*/
-	virtual FString GetCurrentActorLocationAsString() const;
 
-public:
+	/**
+	* Returns the PSDActor body id on the physics service. This should be
+	* used to identify this PSDActor on the physics service.
+	*
+	* @note This a unique ID
+	*
+	* @return This PSDActor's body unique ID on the physics service
+	*/
+	int32 GetPSDActorBodyId() const { return PSDActorBodyId; }
+
+	/**
+	* Returns if this PSDActor is static (should move/updated or not)
+	*
+	* @return True if this PSDActor is static. False otherwise
+	*/
+	constexpr bool IsPSDActorStatic() const { return bIsPSDActorStatic; }
+
+	/**
+	* Called once the PSDActor has entered a physics service region. This is
+	* used to broadcast the delegate that this PSDActor has entered a new
+	* region.
+	*
+	* @param EnteredPhysicsRegionId The physics service region's id the
+	* PSDActor has just entered
+	*/
+	void OnEnteredPhysicsRegion(int32 EnteredPhysicsRegionId);
+
+	/**
+	* Called once the PSDActor has exited a physics service region. This is
+	* used to broadcast the delegate that this PSDActor has exited a new
+	* region.
+	*
+	* @param ExitedPhysicsRegionId The physics service region's id the
+	* PSDActor has just exited
+	*/
+	void OnExitedPhysicsRegion(int32 ExitedPhysicsRegionId);
+	
 	/**
 	* Updates this actor's position. This should be called by the 
 	* PSDActorsCoordinator once the new physics update comes from the physics
@@ -128,39 +164,6 @@ public:
 	void UpdatePSDActorStatusOnRegion
 		(EPSDActorPhysicsRegionStatus NewPhysicsRegionStatus);
 
-public:
-	/**
-	* Called once the PSDActor has entered a physics service region. This is 
-	* used to broadcast the delegate that this PSDActor has entered a new 
-	* region.
-	* 
-	* @param EnteredPhysicsRegionId The physics service region's id the 
-	* PSDActor has just entered
-	*/
-	void OnEnteredPhysicsRegion(int32 EnteredPhysicsRegionId);
-
-	/**
-	* Called once the PSDActor has exited a physics service region. This is
-	* used to broadcast the delegate that this PSDActor has exited a new
-	* region.
-	*
-	* @param ExitedPhysicsRegionId The physics service region's id the
-	* PSDActor has just exited
-	*/
-	void OnExitedPhysicsRegion(int32 ExitedPhysicsRegionId);
-
-public:
-	/** 
-	* Returns the PSDActor body id on the physics service. This should be 
-	* used to identify this PSDActor on the physics service. 
-	*
-	* @note This a unique ID
-	* 
-	* @return This PSDActor's body unique ID on the physics service
-	*/
-	int32 GetPSDActorBodyId() const
-		{ return PSDActorBodyId; }
-
 	/** 
 	* Sets a new PSDActor body ID. This may be needed when spawning PSDActor
 	* clones. The clone should have the same ID as his replica. Thus, after
@@ -170,13 +173,6 @@ public:
 	*/
 	void SetPSDActorBodyId(int32 NewPSDActorBodyId)
 		{ PSDActorBodyId = NewPSDActorBodyId; }
-
-	/** 
-	* Returns if this PSDActor is static (should move/updated or not)
-	*
-	* @return True if this PSDActor is static. False otherwise
-	*/
-	constexpr bool IsPSDActorStatic() const { return bIsPSDActorStatic; }
 
 protected:
 	/** 
@@ -243,6 +239,13 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Replicated)
 	int32 ActorOwnerPhysicsServiceRegionId = 0;
 
+	/**
+	* Flag that indicates if this PSDActor is static. If false, the PSDActor
+	* will not be considered on each physics service step and will not be
+	* updated on each frame
+	*/
+	bool bIsPSDActorStatic = false;
+
 	/** 
 	* The current physics region status of this PSDActor. This will inform if
 	* the PSDActor is currently inside a region (a single region), if on a 
@@ -261,12 +264,4 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_PSDActorBodyId)
 	int32 PSDActorBodyId = 0;
-
-protected:
-	/** 
-	* Flag that indicates if this PSDActor is static. If false, the PSDActor
-	* will not be considered on each physics service step and will not be
-	* updated on each frame
-	*/
-	bool bIsPSDActorStatic = false;
 };

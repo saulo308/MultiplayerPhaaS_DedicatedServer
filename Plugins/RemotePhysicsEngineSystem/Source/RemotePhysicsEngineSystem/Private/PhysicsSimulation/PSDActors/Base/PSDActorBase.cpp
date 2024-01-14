@@ -89,6 +89,46 @@ FString APSDActorBase::GetPhysicsServiceInitializationString()
 	return FString();
 }
 
+void APSDActorBase::OnEnteredPhysicsRegion(int32 EnteredPhysicsRegionId)
+{
+	OnActorEnteredPhysicsRegion.Broadcast(this, EnteredPhysicsRegionId);
+}
+
+void APSDActorBase::OnExitedPhysicsRegion(int32 ExitedPhysicsRegionId)
+{
+	OnActorExitedPhysicsRegion.Broadcast(this, ExitedPhysicsRegionId);
+}
+
+void APSDActorBase::OnRep_PhysicsRegionStatusUpdated()
+{
+	// Switch the enum and set the new physics region status string
+	FString NewPhysicsRegionStatusAsString = FString();
+	switch (CurrentPSDActorPhysicsRegionStatus)
+	{
+	case EPSDActorPhysicsRegionStatus::InsideRegion:
+		NewPhysicsRegionStatusAsString = "InsideRegion";
+		break;
+	case EPSDActorPhysicsRegionStatus::SharedRegion:
+		NewPhysicsRegionStatusAsString = "SharedRegion";
+		break;
+	case EPSDActorPhysicsRegionStatus::NoRegion:
+		NewPhysicsRegionStatusAsString = "NoRegion";
+		break;
+	default:
+		break;
+	}
+
+	// Update the text render component text
+	ActorRegionStatusTextRender->SetText
+	(FText::FromString(*NewPhysicsRegionStatusAsString));
+}
+
+void APSDActorBase::OnRep_PSDActorBodyId()
+{
+	// Update the text render component
+	ActorBodyIdTextRenderComponent->SetText(FText::AsNumber(PSDActorBodyId));
+}
+
 void APSDActorBase::UpdatePositionAfterPhysicsSimulation
 	(const FVector& NewActorPosition)
 {
@@ -119,44 +159,4 @@ void APSDActorBase::UpdatePSDActorStatusOnRegion
 		// Update the current PSDActor physics region status
 		CurrentPSDActorPhysicsRegionStatus = NewPhysicsRegionStatus;
 	}
-}
-
-void APSDActorBase::OnEnteredPhysicsRegion(int32 EnteredPhysicsRegionId)
-{
-	OnActorEnteredPhysicsRegion.Broadcast(this, EnteredPhysicsRegionId);
-}
-
-void APSDActorBase::OnExitedPhysicsRegion(int32 ExitedPhysicsRegionId)
-{
-	OnActorExitedPhysicsRegion.Broadcast(this, ExitedPhysicsRegionId);
-}
-
-void APSDActorBase::OnRep_PhysicsRegionStatusUpdated()
-{
-	// Switch the enum and set the new physics region status string
-	FString NewPhysicsRegionStatusAsString = FString();
-	switch (CurrentPSDActorPhysicsRegionStatus)
-	{
-		case EPSDActorPhysicsRegionStatus::InsideRegion:
-			NewPhysicsRegionStatusAsString = "InsideRegion";
-			break;
-		case EPSDActorPhysicsRegionStatus::SharedRegion:
-			NewPhysicsRegionStatusAsString = "SharedRegion";
-			break;
-		case EPSDActorPhysicsRegionStatus::NoRegion:
-			NewPhysicsRegionStatusAsString = "NoRegion";
-			break;
-		default:
-			break;
-	}
-
-	// Update the text render component text
-	ActorRegionStatusTextRender->SetText
-		(FText::FromString(*NewPhysicsRegionStatusAsString));
-}
-
-void APSDActorBase::OnRep_PSDActorBodyId()
-{
-	// Update the text render component
-	ActorBodyIdTextRenderComponent->SetText(FText::AsNumber(PSDActorBodyId));
 }

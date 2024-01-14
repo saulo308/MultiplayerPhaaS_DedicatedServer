@@ -66,6 +66,15 @@ class REMOTEPHYSICSENGINESYSTEM_API APSDActorsCoordinator : public AActor
 
 public:
 	/**
+	* Getter to the flag "bIsSimulating" to indicate if the PSD actors are
+	* currently simulating physics.
+	*
+	* @return True if PSD actors are simulating physics. False otherwise
+	*/
+	UFUNCTION(BlueprintCallable)
+	bool IsSimulating() { return bIsSimulatingPhysics; }
+
+	/**
 	* Starts the PSD actors simulation. First will open a connection with the
 	* physics service servers (given their IpAddr), intialize the physics world
 	* with all the PSD actors to simulate and set the flag "bIsSimulating" to
@@ -81,38 +90,28 @@ public:
 	void StartPSDActorsSimulation(const TArray<FString>& 
 		SocketServerIpAddrList);
 
+	/**
+	* Starts a PSD actor simulation during 30 seconds. This should be used for
+	* testing-purposes only.
+	*
+	* @param SocketServerIpAddrList The physics service ip addresses to connect
+	* and request physics updates
+	* @param TestDurationInSeconds The test duration in seconds
+	*
+	* @note This should not be used for game-purposes, as the physics should
+	* always be simulating once the BeginPlay() is called. This is useful for
+	* BouncingSpheres test map
+	*/
+	UFUNCTION(BlueprintCallable)
+	void StartPSDActorsSimulationTest(const TArray<FString>&
+		SocketServerIpAddrList, float TestDurationInSeconds = 30.f);
+
 	/** 
 	* Stops the PSD actors simulation. Will set the flag and close the socket 
 	* connection. 
 	*/
 	UFUNCTION(BlueprintCallable)
 	void StopPSDActorsSimulation();
-
-	/** 
-	* Getter to the flag "bIsSimulating" to indicate if the PSD actors are
-	* currently simulating physics.
-	* 
-	* @return True if PSD actors are simulating physics. False otherwise
-	*/
-	UFUNCTION(BlueprintCallable)
-	bool IsSimulating() { return bIsSimulatingPhysics; }
-
-public:
-	/** 
-	* Starts a PSD actor simulation during 30 seconds. This should be used for
-	* testing-purposes only. 
-	* 
-	* @param SocketServerIpAddrList The physics service ip addresses to connect 
-	* and request physics updates
-	* @param TestDurationInSeconds The test duration in seconds
-	* 
-	* @note This should not be used for game-purposes, as the physics should
-	* always be simulating once the BeginPlay() is called. This is useful for
-	* BouncingSpheres test map
-	*/
-	UFUNCTION(BlueprintCallable)
-	void StartPSDActorsSimulationTest(const TArray<FString>& 
-		SocketServerIpAddrList, float TestDurationInSeconds = 30.f);
 
 public:
 	/** Sets default values for this actor's properties */
@@ -155,6 +154,9 @@ private:
 		int32 ExitedPhysicsRegionId);
 
 private:
+	/** Gets all the physics services regions on the world. */
+	void GetAllPhysicsServiceRegions();
+
 	/** 
 	* Updates the PSD actors Transform. This will request the physics service
 	* server physics update and await its response. Once returned, will parse 
@@ -163,10 +165,23 @@ private:
 	void UpdatePSDActors();
 
 private:
-	/** Gets all the physics services regions on the world. */
-	void GetAllPhysicsServiceRegions();
+	/**
+	* Flag that indicates if this PSD actor coordinator is currently updating
+	* the PSD actors
+	*/
+	bool bIsSimulatingPhysics = false;
 
-private:
+	/** The list of physics service regions on the world. */
+	TArray<class APhysicsServiceRegion*> PhysicsServiceRegionList;
+
+	/** The PSDActors Spawner reference to request PSD Actors spawn */
+	class APSDActorsSpawner* PSDActorsSpanwer = nullptr;
+
+	/**
+	* The TimerHandle that handles the PSD actors test (test-purposes only).
+	*/
+	FTimerHandle PSDActorsTestTimerHandle;
+
 	/**
 	* The map that stores the info of PSDActors that are inside shared 
 	* physics service regions. As key we have the reference to the PSDActor
@@ -178,24 +193,6 @@ private:
 	*/
 	TMap<class APSDActorBase*, TArray<FPSDActorPhysicsServiceRegionFootprint>> 
 		SharedRegionsPSDActors;
-
-	/** The list of physics service regions on the world. */
-	TArray<class APhysicsServiceRegion*> PhysicsServiceRegionList;
-
-	/** The PSDActors Spawner reference to request PSD Actors spawn */
-	class APSDActorsSpawner* PSDActorsSpanwer = nullptr;
-
-	/** 
-	* Flag that indicates if this PSD actor coordinator is currently updating 
-	* the PSD actors
-	*/
-	bool bIsSimulatingPhysics = false;
-
-private:
-	/**
-	* The TimerHandle that handles the PSD actors test (test-purposes only).
-	*/
-	FTimerHandle PSDActorsTestTimerHandle;
 
 	/** 
 	* The socket client threads info list. This contains all the threads and
