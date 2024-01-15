@@ -89,15 +89,24 @@ void APSDActorsCoordinator::GetAllPhysicsServiceRegions()
 		// Add to list
 		PhysicsServiceRegionList.Add(FoundPhysicsServiceRegion);
 	}
+
+	// Sort the physics service region list by their id
+	PhysicsServiceRegionList.Sort([](const APhysicsServiceRegion& RegionA, 
+		const APhysicsServiceRegion& RegionB)
+	{
+		return RegionA.GetPhysicsServiceRegionId() 
+			< RegionB.GetPhysicsServiceRegionId();
+	});
 }
 
 void APSDActorsCoordinator::OnPSDActorEnteredPhysicsRegion
 	(APSDActorBase* EnteredPSDActor, int32 EnteredPhysicsRegionId)
 {
-	RPES_LOG_INFO(TEXT("PSDActor \"%s\" has entered region with id: %d."
-		"Entried pos: %s."), *EnteredPSDActor->GetName(),
-		EnteredPhysicsRegionId,
-		*EnteredPSDActor->GetActorLocation().ToString());
+	RPES_LOG_WARNING(TEXT("PSDActor \"%s\" has entered region with id: %d."
+		"Entried pos: %s. PSDActor owner region id: %d"), 
+		*EnteredPSDActor->GetName(), EnteredPhysicsRegionId,
+		*EnteredPSDActor->GetActorLocation().ToString(),
+		EnteredPSDActor->GetActorOwnerPhysicsServiceRegionId());
 
 	// Get the PSDActor owner physics service region id
 	const int32 EnteredPSDActorCurrentOwnerPhysicsServiceRegionId =
@@ -118,7 +127,7 @@ void APSDActorsCoordinator::OnPSDActorEnteredPhysicsRegion
 	// (this may be already set as is if the PSDActor is entering a third
 	// physics region)
 	EnteredPSDActor->UpdatePSDActorStatusOnRegion
-	(EPSDActorPhysicsRegionStatus::SharedRegion);
+		(EPSDActorPhysicsRegionStatus::SharedRegion);
 
 	// Check if the physics service region does exist
 	if (!PhysicsServiceRegionList.IsValidIndex(EnteredPhysicsRegionId))
@@ -174,6 +183,24 @@ void APSDActorsCoordinator::OnPSDActorEnteredPhysicsRegion
 	// Add the clone footprint to the TArray for this actor
 	SharedRegionsPSDActors[EnteredPSDActor].Add(CloneFootprint);
 
+	int32 i = 0;
+	for (const auto Footprint : SharedRegionsPSDActors[EnteredPSDActor])
+	{
+		FString type = FString();
+		switch (Footprint.BodyTypeOnPhysicsServiceRegion)
+		{
+			case EPSDActorBodyTypeOnPhysicsServiceRegion::Clone:
+				type = "clone";
+				break;
+			case EPSDActorBodyTypeOnPhysicsServiceRegion::Primary:
+				type = "primary";
+				break;
+		}
+
+		RPES_LOG_WARNING(TEXT("(%d) Id: %d; Type: %s "), i++, 
+			Footprint.PhysicsServiceRegionId, *type);
+	}
+
 	RPES_LOG_INFO(TEXT("PSDActorsCoordinator has registered PSDActor on the"
 		" shared regions actors."));
 }
@@ -181,9 +208,11 @@ void APSDActorsCoordinator::OnPSDActorEnteredPhysicsRegion
 void APSDActorsCoordinator::OnPSDActorExitPhysicsRegion
 	(APSDActorBase* ExitedPSDActor, int32 ExitedPhysicsRegionId)
 {
-	RPES_LOG_INFO(TEXT("PSDActor \"%s\" has exited region with id: %d. "
-		"Exited pos: %s."), *ExitedPSDActor->GetName(), ExitedPhysicsRegionId,
-		*ExitedPSDActor->GetActorLocation().ToString());
+	RPES_LOG_WARNING(TEXT("PSDActor \"%s\" has exited region with id: %d. "
+		"Exited pos: %s. PSDActor owner region id: %d"), 
+		*ExitedPSDActor->GetName(), ExitedPhysicsRegionId,
+		*ExitedPSDActor->GetActorLocation().ToString(), 
+		ExitedPSDActor->GetActorOwnerPhysicsServiceRegionId());
 
 	// Get the PSDActor owner physics service region id
 	const int32 ExitedPSDActorCurrentOwnerPhysicsServiceRegionId =
@@ -283,7 +312,7 @@ void APSDActorsCoordinator::OnPSDActorExitPhysicsRegion
 			// Update the PSDActor status as we know he is only on a single
 			// region
 			ExitedPSDActor->UpdatePSDActorStatusOnRegion
-			(EPSDActorPhysicsRegionStatus::InsideRegion);
+				(EPSDActorPhysicsRegionStatus::InsideRegion);
 		}
 		else
 		{
@@ -375,7 +404,6 @@ void APSDActorsCoordinator::UpdatePSDActors()
 	}
 
 	RPES_LOG_WARNING(TEXT("Stepping: %d"), StepPhysicsCounter++);
-	RPES_LOG_INFO(TEXT("Updating PSD actors for this frame."));
 
 	// For each socket client thread info, set the message to "step" and send
 	// for each physics service region (we know that each thread represents

@@ -462,8 +462,8 @@ void APhysicsServiceRegion::RemovePSDActorOwnershipFromRegion
 void APhysicsServiceRegion::UpdatePSDActorsOnRegion
 	(const FString& PhysicsSimulationResultStr)
 {
-	RPES_LOG_INFO(TEXT("Updating PSD actors on region with ID: %d."),
-		RegionOwnerPhysicsServiceId);
+	//RPES_LOG_INFO(TEXT("Updating PSD actors on region with ID: %d."),
+		//RegionOwnerPhysicsServiceId);
 
 	// Parse physics simulation result
 	// Each line will contain a result for a actor in terms of:
@@ -573,7 +573,7 @@ void APhysicsServiceRegion::UpdatePSDActorBodyType
 void APhysicsServiceRegion::SetPSDActorOwnershipToRegion
 	(APSDActorBase* TargetPSDActor)
 {
-	RPES_LOG_INFO(TEXT("Adding PSDActor \"%s\" ownership to region "
+	RPES_LOG_INFO(TEXT("Setting PSDActor \"%s\" ownership to region "
 		"(id:%d)"), *TargetPSDActor->GetName(), RegionOwnerPhysicsServiceId);
 
 	// Get the PSDActor body id
@@ -581,7 +581,7 @@ void APhysicsServiceRegion::SetPSDActorOwnershipToRegion
 
 	// Update the PSDActor's owner physics service region id
 	TargetPSDActor->SetActorOwnerPhysicsServiceRegionId
-	(RegionOwnerPhysicsServiceId);
+		(RegionOwnerPhysicsServiceId);
 
 	// Add the PSDActor to this region's DynamicPSDActors so it will start to
 	// update it

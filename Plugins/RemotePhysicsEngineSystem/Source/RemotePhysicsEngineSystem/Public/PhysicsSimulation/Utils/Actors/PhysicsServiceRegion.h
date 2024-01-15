@@ -92,6 +92,14 @@ public:
 	TMap<int32, class APSDActorBase*> GetCachedDynamicPSDActorsOnRegion()
 		{ return DynamicPSDActorsOnRegion; }
 
+	/** 
+	* Getter to the physics service region id.
+	* 
+	* @return The physics service region id
+	*/
+	int32 GetPhysicsServiceRegionId() const 
+		{ return RegionOwnerPhysicsServiceId; }
+
 	/**
 	* Intitializes the physics service region. This will connect to the physics
 	* service given the server ip address set on the properties. Once

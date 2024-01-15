@@ -190,7 +190,7 @@ bool FSocketClientProxy::CloseSocketConnectionsToServerById
 FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message,
     const int32 ServerId)
 {
-    RPES_LOG_INFO(TEXT("Sending message to server with id: %d."), ServerId);
+    //RPES_LOG_INFO(TEXT("Sending message to server with id: %d."), ServerId);
 
     // Get the server's socket connection
     auto TargetServerSocketConnection =
@@ -234,7 +234,7 @@ FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message,
 
     while (true)
     {
-        RPES_LOG_INFO(TEXT("Awaiting server response..."));
+        //RPES_LOG_INFO(TEXT("Awaiting server response..."));
 
         // Await response from socket 
         // (this will stall the game thread until we receive a response)
@@ -250,7 +250,7 @@ FString FSocketClientProxy::SendMessageAndGetResponse(const char* Message,
         }
 
         // Debug amount of bytes received
-        RPES_LOG_INFO(TEXT("Bytes received: %d"), ReceiveReturn);
+        //RPES_LOG_INFO(TEXT("Bytes received: %d"), ReceiveReturn);
 
         // Decode message received from socket as FString
         // The buffer will contain the message returned as char
