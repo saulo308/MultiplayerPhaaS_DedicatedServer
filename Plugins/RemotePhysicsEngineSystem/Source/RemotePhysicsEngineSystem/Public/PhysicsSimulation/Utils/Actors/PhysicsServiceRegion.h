@@ -39,7 +39,9 @@ public:
 	* @param NewSphereLocation The sphere initial location to spawn
 	*/
 	UFUNCTION(BlueprintCallable)
-	void SpawnNewPSDSphere(const FVector NewSphereLocation);
+	void SpawnNewPSDSphere(const FVector NewSphereLocation, const FVector
+		NewSphereLinearVelocity, const FVector
+		NewSphereAngularVelocity);
 
 public:	
 	/** Sets default values for this actor's properties */ 

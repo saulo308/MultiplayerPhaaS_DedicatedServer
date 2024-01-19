@@ -68,14 +68,25 @@ void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 	const auto PSDActorCloneLocation =
 		PSDActorToClone->GetCurrentActorLocationAsString();
 
+	// Get the current actor's linear velocity as a string
+	const auto PSDActorCloneLinearVelocityAsString =
+		PSDActorToClone->GetPSDActorLinearVelocityAsString();
+
+	// Get the current actor's angular velocity as a string
+	const auto PSDActorCloneAngularVelocityString =
+		PSDActorToClone->GetPSDActorAngularVelocityAsString();
+
 	// Create the message to send server
 	// The template is:
 	// "AddBody\n
-	// actorType; Id; bodyType; posX; posY; posZ\n
-	// MessageEnd\n"
+	// actorType; Id; bodyType; posX; posY; posZ; LinearVelocityX; 
+	// LinearVelocityY; LinearVelocityZ;AngularVelocityX; AngularVelocityY;
+	// AngularVelocityZ\nMessageEnd\n"
 	const FString SpawnNewPSDActorCloneMessage =
-		FString::Printf(TEXT("AddBody\nsphere;%d;clone;%s\nMessageEnd\n"),
-			PSDActorBodyID, *PSDActorCloneLocation);
+		FString::Printf(TEXT("AddBody\nsphere;%d;clone;%s;%s;%s\nMessageEnd\n"),
+			PSDActorBodyID, *PSDActorCloneLocation,
+			*PSDActorCloneLinearVelocityAsString, 
+			*PSDActorCloneAngularVelocityString);
 
 	// Convert message to std string
 	std::string MessageAsStdString
@@ -392,7 +403,6 @@ void APhysicsServiceRegion::OnRegionExited
 	// Call the method on the PSDActorBase so he knows he has exited this
 	// physics service region
 	OtherActorAsPSDActor->OnExitedPhysicsRegion(RegionOwnerPhysicsServiceId);
-
 }
 
 void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
@@ -486,7 +496,7 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion
 			TEXT(";"), false);
 
 		// Check for errors
-		if (ParsedActorSimulationResult.Num() < 7)
+		if (ParsedActorSimulationResult.Num() < 13)
 		{
 			RPES_LOG_ERROR(TEXT("Could not parse line \"%s\". Number of "
 				"arguments is: %d"), *SimulationResultLine,
@@ -517,6 +527,30 @@ void APhysicsServiceRegion::UpdatePSDActorsOnRegion
 				ActorID, RegionOwnerPhysicsServiceId);
 			continue;
 		}
+
+		// Update PSD actor linear velocity
+		const float NewLinearVelocityX =
+			FCString::Atof(*ParsedActorSimulationResult[7]);
+		const float NewLinearVelocityY =
+			FCString::Atof(*ParsedActorSimulationResult[8]);
+		const float NewLinearVelocityZ =
+			FCString::Atof(*ParsedActorSimulationResult[9]);
+		const FVector NewLinearVelocity(NewLinearVelocityX, NewLinearVelocityY,
+			NewLinearVelocityZ);
+
+		ActorToUpdate->SetPSDActorLinearVelocity(NewLinearVelocity);
+
+		// Update PSD actor angular velocity
+		const float NewAngularVelocityX =
+			FCString::Atof(*ParsedActorSimulationResult[10]);
+		const float NewAngularVelocityY =
+			FCString::Atof(*ParsedActorSimulationResult[11]);
+		const float NewAngularVelocityZ =
+			FCString::Atof(*ParsedActorSimulationResult[12]);
+		const FVector NewAngularVelocity(NewAngularVelocityX,
+			NewAngularVelocityY, NewAngularVelocityZ);
+
+		ActorToUpdate->SetPSDActorAngularVelocity(NewAngularVelocity);
 
 		// Update PSD actor with the result
 		const float NewPosX =
@@ -589,7 +623,9 @@ void APhysicsServiceRegion::SetPSDActorOwnershipToRegion
 		TargetPSDActor);
 }
 
-void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
+void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation,
+	const FVector NewSphereLinearVelocity, const FVector 
+	NewSphereAngularVelocity)
 {
 	RPES_LOG_INFO(TEXT("Spawning new PSD sphere at location (%s) on region "
 		"with id: %d"), *NewSphereLocation.ToString(), 
@@ -617,9 +653,12 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation)
 	// actorType; Id; bodyType; posX; posY; posZ\n
 	// MessageEnd\n"
 	const FString SpawnNewPSDSphereMessage =
-		FString::Printf(TEXT("AddBody\nspere;%d;primary;%f;%f;%f\nMessageEnd\n"), 
+		FString::Printf(TEXT("AddBody\nspere;%d;primary;%f;%f;%f;%f;%f;%f;%f;%f;%f\nMessageEnd\n"), 
 		NewSphereBodyId, NewSphereLocation.X, NewSphereLocation.Y,
-		NewSphereLocation.Z);
+		NewSphereLocation.Z, NewSphereLinearVelocity.X, 
+		NewSphereLinearVelocity.Y, NewSphereLinearVelocity.Z,
+		NewSphereAngularVelocity.X, NewSphereAngularVelocity.Y, 
+		NewSphereAngularVelocity.Z);
 
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*SpawnNewPSDSphereMessage));

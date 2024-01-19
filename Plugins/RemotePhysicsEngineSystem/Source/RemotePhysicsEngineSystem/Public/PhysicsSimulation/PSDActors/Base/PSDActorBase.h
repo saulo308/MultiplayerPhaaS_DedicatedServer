@@ -76,6 +76,20 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 public:
+	/** */
+	FVector GetPSDActorLinearVelocity() const
+		{ return PSDActorLinearVelocity; }
+
+	/** */
+	FString GetPSDActorLinearVelocityAsString() const;
+
+	/** */
+	FVector GetPSDActorAngularVelocity() const 
+		{ return PSDActorAngularVelocity; }
+
+	/** */
+	FString GetPSDActorAngularVelocityAsString() const;
+
 	/**
 	* Returns this actor's current location as a string with ";" delimiters.
 	* This should be used to initialize the physics world on the physics
@@ -164,6 +178,10 @@ public:
 	void UpdatePSDActorStatusOnRegion
 		(EPSDActorPhysicsRegionStatus NewPhysicsRegionStatus);
 
+	/** */
+	void SetPSDActorAngularVelocity(FVector InPSDActorAngularVelocity)
+		{ PSDActorAngularVelocity = InPSDActorAngularVelocity; }
+
 	/** 
 	* Sets a new PSDActor body ID. This may be needed when spawning PSDActor
 	* clones. The clone should have the same ID as his replica. Thus, after
@@ -173,6 +191,10 @@ public:
 	*/
 	void SetPSDActorBodyId(int32 NewPSDActorBodyId)
 		{ PSDActorBodyId = NewPSDActorBodyId; }
+
+	/** */
+	void SetPSDActorLinearVelocity(FVector InPSDActorLinearVelocity) 
+		{ PSDActorLinearVelocity = InPSDActorLinearVelocity; }
 
 protected:
 	/** 
@@ -239,13 +261,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Replicated)
 	int32 ActorOwnerPhysicsServiceRegionId = 0;
 
-	/**
-	* Flag that indicates if this PSDActor is static. If false, the PSDActor
-	* will not be considered on each physics service step and will not be
-	* updated on each frame
-	*/
-	bool bIsPSDActorStatic = false;
-
 	/** 
 	* The current physics region status of this PSDActor. This will inform if
 	* the PSDActor is currently inside a region (a single region), if on a 
@@ -264,4 +279,18 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_PSDActorBodyId)
 	int32 PSDActorBodyId = 0;
+
+protected:
+	/**
+	* Flag that indicates if this PSDActor is static. If false, the PSDActor
+	* will not be considered on each physics service step and will not be
+	* updated on each frame
+	*/
+	bool bIsPSDActorStatic = false;
+
+	/** */
+	FVector PSDActorLinearVelocity = FVector();
+
+	/** */
+	FVector PSDActorAngularVelocity = FVector();
 };

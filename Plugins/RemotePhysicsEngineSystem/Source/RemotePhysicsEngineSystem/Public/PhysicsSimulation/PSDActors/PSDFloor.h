@@ -25,7 +25,9 @@ public:
 	* a string according to the initialization message template:
 	* 
 	* "ActorTypeString; BodyID; bodyType; InitialPosX; InitialPosY; 
-	* InitialPosY\n"
+	* InitialPosY; InitialLinearVelocityX; InitialLinearVelocityY;
+	* InitialLinearVelocityZ; InitialAngularVelocityX; InitialAngularVelocityY;
+	* InitialAngularVelocityZ\n"
 	* 
 	* Overwritten here, will return the ActorTypeString as "floor"
 	* 

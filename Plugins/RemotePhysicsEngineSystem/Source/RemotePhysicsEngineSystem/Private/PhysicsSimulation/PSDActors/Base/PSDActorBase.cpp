@@ -65,11 +65,30 @@ FString APSDActorBase::GetCurrentActorLocationAsString() const
 	const FVector ActorPos = GetActorLocation();
 
 	// Parse it into a string with ";" delimiters
-	const FString StepPhysicsString =
-		FString::Printf(TEXT("%f;%f;%f"), ActorPos.X, ActorPos.Y,
-			ActorPos.Z);
+	const FString ActorLocationAsString =
+		FString::Printf(TEXT("%f;%f;%f"), ActorPos.X, ActorPos.Y, ActorPos.Z);
 
-	return StepPhysicsString;
+	return ActorLocationAsString;
+}
+
+FString APSDActorBase::GetPSDActorLinearVelocityAsString() const
+{
+	// Parse it into a string with ";" delimiters
+	const FString ActorLinearVelocityAsString =
+		FString::Printf(TEXT("%f;%f;%f"), PSDActorLinearVelocity.X, 
+		PSDActorLinearVelocity.Y, PSDActorLinearVelocity.Z);
+
+	return ActorLinearVelocityAsString;
+}
+
+FString APSDActorBase::GetPSDActorAngularVelocityAsString() const
+{
+	// Parse it into a string with ";" delimiters
+	const FString ActorAngularVelocityAsString =
+		FString::Printf(TEXT("%f;%f;%f"), PSDActorAngularVelocity.X,
+		PSDActorAngularVelocity.Y, PSDActorAngularVelocity.Z);
+
+	return ActorAngularVelocityAsString;
 }
 
 void APSDActorBase::GetLifetimeReplicatedProps
