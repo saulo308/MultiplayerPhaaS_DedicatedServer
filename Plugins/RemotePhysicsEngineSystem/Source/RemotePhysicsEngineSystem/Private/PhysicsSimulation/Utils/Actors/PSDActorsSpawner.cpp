@@ -18,12 +18,12 @@ void APSDActorsSpawner::BeginPlay()
 }
 
 void APSDActorsSpawner::SpawnPSDActors
-	(const int32 NumberOfActorsToSpawn)
+	(const int32 InNumberOfActorsToSpawn)
 {
 	RPES_LOG_INFO(TEXT("Requested spawn of %d PSD Actors."),
-		NumberOfActorsToSpawn);
+		InNumberOfActorsToSpawn);
 
-	if (NumberOfActorsToSpawn <= 0)
+	if (InNumberOfActorsToSpawn <= 0)
 	{
 		RPES_LOG_ERROR(TEXT("Inform a positive number of PSD actors to \
 			spawn."));
@@ -39,7 +39,7 @@ void APSDActorsSpawner::SpawnPSDActors
 	float CurZPosToSpawn = 0.f;
 
 	// While we are not finished spawning the required amount:
-	while (NumberOfSpawnedActors < NumberOfActorsToSpawn)
+	while (NumberOfSpawnedActors < InNumberOfActorsToSpawn)
 	{
 		// Set the current position equal to the max so we can start decreasing
 		// the x-pos (thus, the first x-pos is MaxXPos)
@@ -51,13 +51,13 @@ void APSDActorsSpawner::SpawnPSDActors
 		CurZPosToSpawn += MinZPos;
 
 		// While there's still space to spawn on this "line"
-		while (CurXPosToSpawn > -950.f)
+		while (CurXPosToSpawn > MinXPos)
 		{
 			CurXPosToSpawn -= 150.f;
 			CurYPosToSpawn = MaxYPos;
 
 			// While there's still space to spawn on this "column"
-			while (CurYPosToSpawn < 950.f)
+			while (CurYPosToSpawn < MinYPos)
 			{
 				CurYPosToSpawn += 150.f;
 
@@ -71,14 +71,14 @@ void APSDActorsSpawner::SpawnPSDActors
 				// Increase and check if we reached the number of actors to
 				// spawn
 				NumberOfSpawnedActors++;
-				if (NumberOfSpawnedActors == NumberOfActorsToSpawn)
+				if (NumberOfSpawnedActors == InNumberOfActorsToSpawn)
 				{
 					break;
 				}
 			}
 
 			// Check if we finished spawning
-			if (NumberOfSpawnedActors == NumberOfActorsToSpawn)
+			if (NumberOfSpawnedActors == InNumberOfActorsToSpawn)
 			{
 				break;
 			}

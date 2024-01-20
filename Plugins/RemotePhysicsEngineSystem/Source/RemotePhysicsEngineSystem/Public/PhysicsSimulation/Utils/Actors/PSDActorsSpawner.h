@@ -31,7 +31,7 @@ public:
 	* @param NumberOfActorsToSpawn The number of actors to spawn on the area.
 	*/
 	UFUNCTION(BlueprintCallable)
-	void SpawnPSDActors(const int32 NumberOfActorsToSpawn);
+	void SpawnPSDActors(const int32 InNumberOfActorsToSpawn);
 
 	/** 
 	* Spawns a PSDActor on a given location.
@@ -57,27 +57,36 @@ protected:
 
 public:
 	/** The PSD actor reference to spawn on the area. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<class APSDActorBase> ActorToSpawn;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	int32 NumberOfActorsToSpawn = 0;
 
 	/**
 	* The max X position the spawned PSD actors can have. If reaches this
 	* limit, will create another layer on top of the last one.
 	*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float MaxXPos = 1100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float MinXPos = -400.f;
 
 	/**
 	* The max Y position the spawned PSD actors can have. If reaches this
 	* limit, will create another layer on top of the last one.
 	*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float MaxYPos = -1100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float MinYPos = 400.f;
 
 	/**
 	* The max Z position the spawned PSD actors can have. If reaches this
 	* limit, will create another layer on top of the last one.
 	*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float MinZPos = 220.f;
 };
