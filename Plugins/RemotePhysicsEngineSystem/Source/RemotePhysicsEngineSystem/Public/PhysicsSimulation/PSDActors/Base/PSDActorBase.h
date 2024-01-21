@@ -225,15 +225,15 @@ public:
 	* The actor's body id text render component. Used to show the current
 	* actor's bodyID on the physics service
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class UTextRenderComponent* ActorBodyIdTextRenderComponent = nullptr;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	//class UTextRenderComponent* ActorBodyIdTextRenderComponent = nullptr;
 
 	/**
 	* The actor's physics region text render component. Used to show the 
 	* current actor's physics region status
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class UTextRenderComponent* ActorRegionStatusTextRender = nullptr;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	//class UTextRenderComponent* ActorRegionStatusTextRender = nullptr;
 
 public:
 	/**

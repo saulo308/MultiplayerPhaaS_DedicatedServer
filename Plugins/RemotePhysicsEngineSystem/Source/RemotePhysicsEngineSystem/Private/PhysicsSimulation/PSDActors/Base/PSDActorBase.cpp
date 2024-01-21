@@ -22,17 +22,17 @@ APSDActorBase::APSDActorBase()
 
 	// Creating the actor's body id text render component. This will show
 	// the actor's body id as 3D text
-	ActorBodyIdTextRenderComponent =
-		CreateDefaultSubobject<UTextRenderComponent>
-		(TEXT("ActorBodyIdTextRenderComponent"));
-	ActorBodyIdTextRenderComponent->SetupAttachment(ActorRootComponent);
+	//ActorBodyIdTextRenderComponent =
+		//CreateDefaultSubobject<UTextRenderComponent>
+		//(TEXT("ActorBodyIdTextRenderComponent"));
+	//ActorBodyIdTextRenderComponent->SetupAttachment(ActorRootComponent);
 
 	// Creating the actor's region status text render component. This will show
 	// the actor's region statusas 3D text
-	ActorRegionStatusTextRender =
-		CreateDefaultSubobject<UTextRenderComponent>
-		(TEXT("ActorRegionStatusTextRender"));
-	ActorRegionStatusTextRender->SetupAttachment(ActorRootComponent);
+	//ActorRegionStatusTextRender =
+		//CreateDefaultSubobject<UTextRenderComponent>
+		//(TEXT("ActorRegionStatusTextRender"));
+	//ActorRegionStatusTextRender->SetupAttachment(ActorRootComponent);
 
 	// Set this actor to replicate as it will spawn on the server
 	bReplicates = true;
@@ -138,14 +138,14 @@ void APSDActorBase::OnRep_PhysicsRegionStatusUpdated()
 	}
 
 	// Update the text render component text
-	ActorRegionStatusTextRender->SetText
-		(FText::FromString(*NewPhysicsRegionStatusAsString));
+	//ActorRegionStatusTextRender->SetText
+	//	(FText::FromString(*NewPhysicsRegionStatusAsString));
 }
 
 void APSDActorBase::OnRep_PSDActorBodyId()
 {
 	// Update the text render component
-	ActorBodyIdTextRenderComponent->SetText(FText::AsNumber(PSDActorBodyId));
+	//ActorBodyIdTextRenderComponent->SetText(FText::AsNumber(PSDActorBodyId));
 }
 
 void APSDActorBase::UpdatePositionAfterPhysicsSimulation

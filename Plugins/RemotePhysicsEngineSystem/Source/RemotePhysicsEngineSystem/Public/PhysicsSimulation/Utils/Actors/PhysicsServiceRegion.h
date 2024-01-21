@@ -107,8 +107,13 @@ public:
 	* service given the server ip address set on the properties. Once
 	* connected, will initialize the physics world on the service. This will be
 	* done by getting all the PSD actors on this region.
+	* 
+	* @param RegionPhysicsServiceIpAddr The physics service ip addr to connect the
+	* region to. All physics simulation inside this region will be driven by
+	* such physics service
 	*/
-	void InitializePhysicsServiceRegion();
+	void InitializePhysicsServiceRegion(const FString& 
+		RegionPhysicsServiceIpAddr);
 
 	/**
 	* Removes the ownership of this region from a given PSDActor. The process
@@ -211,7 +216,10 @@ private:
 public:
 	/** 
 	* The physics service ip address to connect this region to. This service
-	* will be the one responsible for updating this region's physics actors
+	* will be the one responsible for updating this region's physics actors.
+	* 
+	* @note This will be set by the PSDActorsCoodinator once the simulation 
+	* starts.
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString PhysicsServiceIpAddr = FString();

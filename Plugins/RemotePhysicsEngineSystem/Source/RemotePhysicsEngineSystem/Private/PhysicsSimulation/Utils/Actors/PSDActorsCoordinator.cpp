@@ -470,10 +470,26 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 {
 	RPES_LOG_INFO(TEXT("Starting PSD actors simulation."));
 
+	if (SocketServerIpAddrList.Num() != PhysicsServiceRegionList.Num())
+	{
+		RPES_LOG_ERROR(TEXT("Could not start PSDActors simulation as the "
+			"number of servers to connect to don't match the number of "
+			"physics services regions."));
+		return;
+	}
+
+	// Aux to attribute physicsd service regions ip addr
+	int32 CurrentPhysicsInitializedPhysicsRegion = 0;
+
 	// For each physics service region on the world, initialize it
 	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
 	{
-		PhysicsServiceRegion->InitializePhysicsServiceRegion();
+		const FString& PhysicsServiceRegionIpAddr =
+			SocketServerIpAddrList[CurrentPhysicsInitializedPhysicsRegion++];
+
+		// Initialize the region with the given ip addr
+		PhysicsServiceRegion->InitializePhysicsServiceRegion
+			(PhysicsServiceRegionIpAddr);
 
 		// Get all the dynamic PSDActors on this region
 		const auto DynamicPSDActorsOnRegion = PhysicsServiceRegion->

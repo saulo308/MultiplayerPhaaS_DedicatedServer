@@ -260,10 +260,14 @@ TArray<APSDActorBase*> APhysicsServiceRegion::GetAllPSDActorsOnRegion()
 	return PSDActorsOnRegion;
 }
 
-void APhysicsServiceRegion::InitializePhysicsServiceRegion()
+void APhysicsServiceRegion::InitializePhysicsServiceRegion(const FString&
+	RegionPhysicsServiceIpAddr)
 {
 	RPES_LOG_INFO(TEXT("Starting PSD actors simulation on region with "
 		"ID: %d."), RegionOwnerPhysicsServiceId);
+
+	// Set the region's physics service ip addr
+	PhysicsServiceIpAddr = RegionPhysicsServiceIpAddr;
 
 	// Connect this region to his physics service (given IP addr and ID)
 	const bool bWasConnectionSuccessful = ConnectToPhysicsService();
