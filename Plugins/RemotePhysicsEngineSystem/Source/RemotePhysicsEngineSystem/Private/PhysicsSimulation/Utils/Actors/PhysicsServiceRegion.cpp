@@ -98,7 +98,7 @@ void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 
 	// Send message to add the body to the physics world on service
 	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-	(MessageAsChar, RegionOwnerPhysicsServiceId);
+		(MessageAsChar, RegionOwnerPhysicsServiceId);
 
 	RPES_LOG_INFO(TEXT("Add new PSDActor clone action response: %s"),
 		*Response);
@@ -441,10 +441,9 @@ void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
 	// limitation of 128 bytes, returning garbage when it's over it
 	char* MessageAsChar = &MessageAsStdString[0];
 
-	// Send message to initialize physics world on service
-	// TODO this should receive a given physics service id
+	// Send message to remove body from the physics world on service
 	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-	(MessageAsChar, RegionOwnerPhysicsServiceId);
+		(MessageAsChar, RegionOwnerPhysicsServiceId);
 
 	RPES_LOG_INFO(TEXT("Remove body request response: %s"), *Response);
 }
@@ -602,7 +601,7 @@ void APhysicsServiceRegion::UpdatePSDActorBodyType
 
 	// Send message to update the body type on service
 	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-	(MessageAsChar, RegionOwnerPhysicsServiceId);
+		(MessageAsChar, RegionOwnerPhysicsServiceId);
 
 	RPES_LOG_INFO(TEXT("Update PSDActor BodyType response: %s"),
 		*Response);
@@ -679,3 +678,75 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation,
 	RPES_LOG_INFO(TEXT("Add new sphere action response: %s"), *Response);
 }
 
+void APhysicsServiceRegion::SavePhysicsServiceMeasuresements()
+{
+	// Create the message to send to the physics service
+	// The template is:
+	// "GetSimulationMeasures\n
+	// MessageEnd\n"
+	const FString GetSimulationMeasuresMessage =
+		FString::Printf(TEXT("GetSimulationMeasures\n%d\nMessageEnd\n"));
+
+	// Convert message to std string
+	std::string MessageAsStdString(TCHAR_TO_UTF8
+		(*GetSimulationMeasuresMessage));
+
+	// Convert message to char*. This is needed as some UE converting has the
+	// limitation of 128 bytes, returning garbage when it's over it
+	char* MessageAsChar = &MessageAsStdString[0];
+
+	// Send message to initialize physics world on service
+	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
+		(MessageAsChar, RegionOwnerPhysicsServiceId);
+	
+	// Save the physics service measurements to file
+	SavePhysicsServiceMeasuresToFile(Response);
+}
+
+void APhysicsServiceRegion::SavePhysicsServiceMeasuresToFile
+	(const FString& Measurements) const
+{
+	FString TargetFolder = TEXT("StepPhysicsMeasureWithoutCommsOverhead");
+	FString FullFolderPath =
+		FString(FPlatformProcess::UserDir() + TargetFolder);
+
+	FullFolderPath = FullFolderPath.Replace(TEXT("/"), TEXT("\\\\"));
+
+	//Criando diretório se já não existe
+	if (!IFileManager::Get().DirectoryExists(*FullFolderPath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Criando diretorio: %s"),
+			*FullFolderPath);
+		IFileManager::Get().MakeDirectory(*FullFolderPath);
+	}
+
+	// Get the current world
+	UWorld* CurrentWorld = GetWorld();
+
+	// Get the current level
+	ULevel* CurrentLevel = CurrentWorld->GetCurrentLevel();
+
+	// Get the map name
+	FString MapName = CurrentLevel->GetOuter()->GetName();
+
+	int32 FileCount = 1;
+	FString FileName = FString::Printf(TEXT("/StepPhysicsTime_%s_Region%d_%d.txt"),
+		*MapName, RegionOwnerPhysicsServiceId, FileCount);
+
+	FString FileFullPath = FPlatformProcess::UserDir() + TargetFolder +
+		FileName;
+
+	while (IFileManager::Get().FileExists(*FileFullPath))
+	{
+		FileCount++;
+		FileName = FString::Printf(TEXT("/StepPhysicsTime_%s_Region%d_%d.txt"),
+			*MapName, RegionOwnerPhysicsServiceId, FileCount);
+
+		FileFullPath = FPlatformProcess::UserDir() + TargetFolder + FileName;
+	}
+
+	RPES_LOG_WARNING(TEXT("Saving service step physics time measurement into "
+		"\"%s\""), *FileFullPath);
+
+	FFileHelper::SaveStringToFile(Measurements, *FileFullPath);
+}

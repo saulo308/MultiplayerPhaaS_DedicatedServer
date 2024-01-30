@@ -66,6 +66,8 @@ void APSDActorsCoordinator::Tick(float DeltaTime)
 
 	if (bIsSimulatingPhysics && HasAuthority())
 	{
+		DeltaTimeMeasurement += FString::Printf(TEXT("%f\n"), DeltaTime);
+
 		// Update PSD actors by simulating physics on the service
 		// and parsing it's results with the new actor position
 		UpdatePSDActors();
@@ -405,6 +407,11 @@ void APSDActorsCoordinator::UpdatePSDActors()
 
 	RPES_LOG_WARNING(TEXT("Stepping: %d"), StepPhysicsCounter++);
 
+	// Get pre step physics time
+	std::chrono::steady_clock::time_point preStepPhysicsTime =
+		std::chrono::steady_clock::now();
+	int32 UpdatedSocketCounter = 0;
+
 	// For each socket client thread info, set the message to "step" and send
 	// for each physics service region (we know that each thread represents
 	// a given physics region)
@@ -444,6 +451,34 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		// find and update it
 		const int32 RegionPhysicsServiceId = SocketClientThreadInfo.Key;
 
+		// Update the counter so we know when we reached the last socket 
+		// update
+		UpdatedSocketCounter++;
+
+		// Once reached the last socket  update, get the time it took with
+		// stepping  physics
+		if (UpdatedSocketCounter == SocketClientThreadsInfoList.Num())
+		{
+			// Get post physics communication time
+			std::chrono::steady_clock::time_point postStepPhysicsTime =
+				std::chrono::steady_clock::now();
+
+			// Calculate the microsseconds all step physics simulation
+			// (considering communication )took
+			std::stringstream ss;
+			ss << std::chrono::duration_cast<std::chrono::microseconds>
+				(postStepPhysicsTime - preStepPhysicsTime).count();
+			const std::string elapsedTime = ss.str();
+
+			// Get the delta time in FString
+			const FString ElapsedPhysicsTimeMicroseconds =
+				UTF8_TO_TCHAR(elapsedTime.c_str());
+
+			// Append the delta time to the current step measurement
+			StepPhysicsTimeWithCommsOverheadTimeMeasure +=
+				ElapsedPhysicsTimeMicroseconds + "\n";
+		}
+
 		// Foreach physics service region on the world, update the PSDActors 
 		// on it
 		for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
@@ -477,6 +512,9 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 			"physics services regions."));
 		return;
 	}
+	
+	// Reset delta time measurement
+	DeltaTimeMeasurement = FString();
 
 	// Aux to attribute physicsd service regions ip addr
 	int32 CurrentPhysicsInitializedPhysicsRegion = 0;
@@ -541,11 +579,119 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 	// Set the flag to false to stop ticking PSDActors' update
 	bIsSimulatingPhysics = false;
 
+	// For each physics service region on the world, save the measurements
+	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
+	{
+		PhysicsServiceRegion->SavePhysicsServiceMeasuresements();
+	}
+
 	// For each physics service region on the world, clear it
 	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
 	{
 		PhysicsServiceRegion->ClearPhysicsServiceRegion();
 	}
 
+	if (HasAuthority())
+	{
+		// Save the delta time and step physics time measurements
+		SaveDeltaTimeMeasurementToFile();
+		SaveStepPhysicsTimeMeasureToFile();
+	}
+
 	RPES_LOG_INFO(TEXT("PSD actors simulation has been stopped."));
+}
+
+void APSDActorsCoordinator::SaveDeltaTimeMeasurementToFile() const
+{
+	FString TargetFolder = TEXT("FPSMeasure");
+	FString FullFolderPath = 
+		FString(FPlatformProcess::UserDir() + TargetFolder);
+
+	FullFolderPath = FullFolderPath.Replace(TEXT("/"), TEXT("\\\\"));
+
+	//Criando diretório se já não existe
+	if (!IFileManager::Get().DirectoryExists(*FullFolderPath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Criando diretorio: %s"),
+			*FullFolderPath);
+		IFileManager::Get().MakeDirectory(*FullFolderPath);
+	}
+	
+	// Get the current world
+	UWorld* CurrentWorld = GetWorld();
+
+	// Get the current level
+	ULevel* CurrentLevel = CurrentWorld->GetCurrentLevel();
+
+	// Get the map name
+	FString MapName = CurrentLevel->GetOuter()->GetName();
+
+	int32 FileCount = 1;
+	FString FileName = FString::Printf(TEXT("/%s_Remote_%d.txt"), *MapName, 
+		FileCount);
+
+	FString FileFullPath = FPlatformProcess::UserDir() + TargetFolder +
+		FileName;
+
+	while (IFileManager::Get().FileExists(*FileFullPath))
+	{
+		FileCount++;
+		FileName = FString::Printf(TEXT("/%s_Remote_%d.txt"), *MapName, 
+			FileCount);
+
+		FileFullPath = FPlatformProcess::UserDir() + TargetFolder + FileName;
+	}
+
+	RPES_LOG_WARNING(TEXT("Saving delta time measurement into \"%s\""), 
+		*FileFullPath);
+
+	FFileHelper::SaveStringToFile(DeltaTimeMeasurement, *FileFullPath);
+}
+
+void APSDActorsCoordinator::SaveStepPhysicsTimeMeasureToFile() const
+{
+	FString TargetFolder = TEXT("StepPhysicsMeasureWithCommsOverhead");
+	FString FullFolderPath =
+		FString(FPlatformProcess::UserDir() + TargetFolder);
+
+	FullFolderPath = FullFolderPath.Replace(TEXT("/"), TEXT("\\\\"));
+
+	//Criando diretório se já não existe
+	if (!IFileManager::Get().DirectoryExists(*FullFolderPath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Criando diretorio: %s"),
+			*FullFolderPath);
+		IFileManager::Get().MakeDirectory(*FullFolderPath);
+	}
+
+	// Get the current world
+	UWorld* CurrentWorld = GetWorld();
+
+	// Get the current level
+	ULevel* CurrentLevel = CurrentWorld->GetCurrentLevel();
+
+	// Get the map name
+	FString MapName = CurrentLevel->GetOuter()->GetName();
+
+	int32 FileCount = 1;
+	FString FileName = FString::Printf(TEXT("/StepPhysicsTime_%s_%d.txt"),
+		*MapName, FileCount);
+
+	FString FileFullPath = FPlatformProcess::UserDir() + TargetFolder +
+		FileName;
+
+	while (IFileManager::Get().FileExists(*FileFullPath))
+	{
+		FileCount++;
+		FileName = FString::Printf(TEXT("/StepPhysicsTime_%s_%d.txt"), 
+			*MapName, FileCount);
+
+		FileFullPath = FPlatformProcess::UserDir() + TargetFolder + FileName;
+	}
+
+	RPES_LOG_WARNING(TEXT("Saving step physics time measurement into \"%s\""),
+		*FileFullPath);
+
+	FFileHelper::SaveStringToFile(StepPhysicsTimeWithCommsOverheadTimeMeasure,
+		*FileFullPath);
 }

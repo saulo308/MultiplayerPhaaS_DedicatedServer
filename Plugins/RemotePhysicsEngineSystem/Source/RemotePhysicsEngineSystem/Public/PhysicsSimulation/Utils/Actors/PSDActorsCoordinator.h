@@ -164,6 +164,10 @@ private:
 	*/
 	void UpdatePSDActors();
 
+	void SaveDeltaTimeMeasurementToFile() const;
+
+	void SaveStepPhysicsTimeMeasureToFile() const;
+
 private:
 	/**
 	* Flag that indicates if this PSD actor coordinator is currently updating
@@ -204,4 +208,11 @@ private:
 
 	/** Counts the amount of step the physics system */
 	uint32 StepPhysicsCounter = 0;
+
+private:
+	/** */
+	FString DeltaTimeMeasurement = FString();
+
+	/** */
+	FString StepPhysicsTimeWithCommsOverheadTimeMeasure = FString();
 };

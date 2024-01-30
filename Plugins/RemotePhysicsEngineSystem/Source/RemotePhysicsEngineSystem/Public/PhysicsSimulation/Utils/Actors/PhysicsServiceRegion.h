@@ -149,6 +149,12 @@ public:
 	*/
 	void UpdatePSDActorsOnRegion(const FString& PhysicsSimulationResultStr);
 
+	/** */
+	void SavePhysicsServiceMeasuresements();
+
+	/** */
+	void SavePhysicsServiceMeasuresToFile(const FString& Measurements) const;
+
 	/**
 	* Adds the ownership of this region to a given PSDActor. The process of
 	* adding the ownership means that this physics service region will update
