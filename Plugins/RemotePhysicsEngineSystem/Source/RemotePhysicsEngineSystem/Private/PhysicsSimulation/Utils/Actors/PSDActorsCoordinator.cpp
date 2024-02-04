@@ -9,12 +9,15 @@
 
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
+#include "GenericPlatform/GenericPlatformMemory.h"
 
+#include <cstdlib>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <chrono>
 
+constexpr char GetCpuUsageCommand[] = "WMIC CPU GET LoadPercentage | findstr [0-9]";
 const int32 DefaultServerId = 0;
 
 APSDActorsCoordinator::APSDActorsCoordinator()
@@ -68,7 +71,43 @@ void APSDActorsCoordinator::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	DeltaTimeMeasurement += FString::Printf(TEXT("%f\n"), DeltaTime);
+	if (bIsSimulatingPhysics)
+	{
+		if (HasAuthority())
+		{
+			// Check if the simulation timer remaining is less then 15s. If so,
+			// measure the CPU and RAM
+			if (!bHasMeasuredCpuAndRamForSimulation &&
+				(GetWorld()->GetTimerManager().GetTimerRemaining
+				(PSDActorsTestTimerHandle) <= 15.f))
+			{
+				// Set the flag as we will measure the CPU and RAM
+				bHasMeasuredCpuAndRamForSimulation = true;
+
+				// Get memory measurement (will muiltcast to clients)
+				GetRamMeasurement();
+
+				// Get and store the cpu percentage usage (will muiltcast to 
+				// clients)
+				GetCPUMeasurement();
+			}
+			else
+			{
+				// If not, just measure the DeltaTime. Here we do this as
+				// the CPU and RAM usage will affect the delta time. So we 
+				// don't want to measure the DeltaTime during it
+				DeltaTimeMeasurement += FString::Printf(TEXT("%f\n"),
+					DeltaTime);
+				
+			}
+		}
+		else
+		{
+			// Measure the delta time on client
+			DeltaTimeMeasurement += FString::Printf(TEXT("%f\n"),
+				DeltaTime);
+		}
+	}
 
 	if (bIsSimulatingPhysics && HasAuthority())
 	{
@@ -109,6 +148,9 @@ void APSDActorsCoordinator::GetLifetimeReplicatedProps
 	(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// Replicate simualting physics 
+	DOREPLIFETIME(APSDActorsCoordinator, bIsSimulatingPhysics);
 }
 
 void APSDActorsCoordinator::OnPSDActorEnteredPhysicsRegion
@@ -417,7 +459,7 @@ void APSDActorsCoordinator::UpdatePSDActors()
 
 	RPES_LOG_WARNING(TEXT("Stepping: %d"), StepPhysicsCounter++);
 
-	// Get pre step physics time
+	// Get pre step physics time (time spent updating physics on services)
 	std::chrono::steady_clock::time_point preStepPhysicsTime =
 		std::chrono::steady_clock::now();
 	int32 UpdatedSocketCounter = 0;
@@ -443,9 +485,7 @@ void APSDActorsCoordinator::UpdatePSDActors()
 			CurrentDelta);
 	}
 
-	// For each socket client thread info, await its completion and get the
-	// physics service response so we can delegate the update to the 
-	// corresponding physics service
+	// For each socket client thread info, await its completion
 	for (auto& SocketClientThreadInfo : SocketClientThreadsInfoList)
 	{
 		// Get the thread info
@@ -456,18 +496,7 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		auto& Thread = ThreadInfoPair.Value;
 
 		// Await the thread completion
-		Thread->WaitForCompletion(); 
-		
-		const float CurrentDelta = GetWorld()->GetDeltaSeconds();
-		RPES_LOG_WARNING(TEXT("Received update at (%d): %f"), 
-			UpdatedSocketCounter, CurrentDelta);
-
-		// Once completed, get the response on the worker
-		FString Result = ThreadWorker.GetResponse();
-
-		// Get the region physics service id this thread represents so we can
-		// find and update it
-		const int32 RegionPhysicsServiceId = SocketClientThreadInfo.Key;
+		Thread->WaitForCompletion();
 
 		// Update the counter so we know when we reached the last socket 
 		// update
@@ -477,7 +506,7 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		// stepping  physics
 		if (UpdatedSocketCounter == SocketClientThreadsInfoList.Num())
 		{
-			// Get post physics communication time
+			// Get post physics update time
 			std::chrono::steady_clock::time_point postStepPhysicsTime =
 				std::chrono::steady_clock::now();
 
@@ -488,14 +517,34 @@ void APSDActorsCoordinator::UpdatePSDActors()
 				(postStepPhysicsTime - preStepPhysicsTime).count();
 			const std::string elapsedTime = ss.str();
 
-			// Get the delta time in FString
+			// Get the step phyiscs time (time spent updating physics on 
+			// services) in FString
 			const FString ElapsedPhysicsTimeMicroseconds =
 				UTF8_TO_TCHAR(elapsedTime.c_str());
 
-			// Append the delta time to the current step measurement
+			// Append the step physics time to the current step measurement
 			StepPhysicsTimeWithCommsOverheadTimeMeasure +=
 				ElapsedPhysicsTimeMicroseconds + "\n";
 		}
+	}
+
+	// For each socket client thread info, get the physics service response so 
+	// we can delegate the update to the corresponding physics service
+	for (auto& SocketClientThreadInfo : SocketClientThreadsInfoList)
+	{
+		// Get the thread info
+		auto& ThreadInfoPair = SocketClientThreadInfo.Value;
+
+		// Get the worker and the corresponding thread
+		auto& ThreadWorker = ThreadInfoPair.Key;
+		auto& Thread = ThreadInfoPair.Value;
+
+		// Once completed, get the response on the worker
+		FString Result = ThreadWorker.GetResponse();
+
+		// Get the region physics service id this thread represents so we can
+		// find and update it
+		const int32 RegionPhysicsServiceId = SocketClientThreadInfo.Key;
 
 		// Foreach physics service region on the world, update the PSDActors 
 		// on it
@@ -531,8 +580,12 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 		return;
 	}
 	
-	// Reset delta time measurement
+	// Reset delta measurements
 	DeltaTimeMeasurement = FString();
+	StepPhysicsTimeWithCommsOverheadTimeMeasure = FString();
+	UsedRamMeasurement = FString();
+	AllocatedRamMeasurement = FString();
+	CPUUsageMeasurement = FString();
 
 	// Aux to attribute physicsd service regions ip addr
 	int32 CurrentPhysicsInitializedPhysicsRegion = 0;
@@ -576,6 +629,8 @@ void APSDActorsCoordinator::StartPSDActorsSimulationTest
 	(const TArray<FString>& SocketServerIpAddrList, 
 	float TestDurationInSeconds/*=30.f*/)
 {
+	bHasMeasuredCpuAndRamForSimulation = false;
+
 	// Start the PSD actors simulation
 	StartPSDActorsSimulation(SocketServerIpAddrList);
 
@@ -611,9 +666,12 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 
 	if (HasAuthority())
 	{
-		// Save the delta time and step physics time measurements
+		// Save measurements
 		SaveDeltaTimeMeasurementToFile();
 		SaveStepPhysicsTimeMeasureToFile();
+		SaveUsedRamMeasurements();
+		SaveAllocatedRamMeasurements();
+		SaveCpuMeasurements();
 	}
 
 	RPES_LOG_INFO(TEXT("PSD actors simulation has been stopped."));
@@ -714,4 +772,192 @@ void APSDActorsCoordinator::SaveStepPhysicsTimeMeasureToFile_Implementation()
 
 	FFileHelper::SaveStringToFile(StepPhysicsTimeWithCommsOverheadTimeMeasure,
 		*FileFullPath);
+}
+
+void APSDActorsCoordinator::SaveUsedRamMeasurements_Implementation() const
+{
+	FString TargetFolder = TEXT("UsedRamMeasurements");
+	FString FullFolderPath =
+		FString(FPlatformProcess::UserDir() + TargetFolder);
+
+	FullFolderPath = FullFolderPath.Replace(TEXT("/"), TEXT("\\\\"));
+
+	//Criando diretório se já não existe
+	if (!IFileManager::Get().DirectoryExists(*FullFolderPath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Criando diretorio: %s"),
+			*FullFolderPath);
+		IFileManager::Get().MakeDirectory(*FullFolderPath);
+	}
+
+	// Get the current world
+	UWorld* CurrentWorld = GetWorld();
+
+	// Get the current level
+	ULevel* CurrentLevel = CurrentWorld->GetCurrentLevel();
+
+	// Get the map name
+	FString MapName = CurrentLevel->GetOuter()->GetName();
+
+	int32 FileCount = 1;
+	FString FileName = FString::Printf(TEXT("/UsedRam_%s_%d.txt"),
+		*MapName, FileCount);
+
+	FString FileFullPath = FPlatformProcess::UserDir() + TargetFolder +
+		FileName;
+
+	while (IFileManager::Get().FileExists(*FileFullPath))
+	{
+		FileCount++;
+		FileName = FString::Printf(TEXT("/UsedRam_%s_%d.txt"),
+			*MapName, FileCount);
+
+		FileFullPath = FPlatformProcess::UserDir() + TargetFolder + FileName;
+	}
+
+	RPES_LOG_WARNING(TEXT("Saving used ram measurement into \"%s\""),
+		*FileFullPath);
+
+	FFileHelper::SaveStringToFile(UsedRamMeasurement, *FileFullPath);
+}
+
+void APSDActorsCoordinator::SaveAllocatedRamMeasurements_Implementation() const
+{
+	FString TargetFolder = TEXT("AllocatedRamMeasurements");
+	FString FullFolderPath =
+		FString(FPlatformProcess::UserDir() + TargetFolder);
+
+	FullFolderPath = FullFolderPath.Replace(TEXT("/"), TEXT("\\\\"));
+
+	//Criando diretório se já não existe
+	if (!IFileManager::Get().DirectoryExists(*FullFolderPath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Criando diretorio: %s"),
+			*FullFolderPath);
+		IFileManager::Get().MakeDirectory(*FullFolderPath);
+	}
+
+	// Get the current world
+	UWorld* CurrentWorld = GetWorld();
+
+	// Get the current level
+	ULevel* CurrentLevel = CurrentWorld->GetCurrentLevel();
+
+	// Get the map name
+	FString MapName = CurrentLevel->GetOuter()->GetName();
+
+	int32 FileCount = 1;
+	FString FileName = FString::Printf(TEXT("/AllocatedRam_%s_%d.txt"),
+		*MapName, FileCount);
+
+	FString FileFullPath = FPlatformProcess::UserDir() + TargetFolder +
+		FileName;
+
+	while (IFileManager::Get().FileExists(*FileFullPath))
+	{
+		FileCount++;
+		FileName = FString::Printf(TEXT("/AllocatedRam_%s_%d.txt"),
+			*MapName, FileCount);
+
+		FileFullPath = FPlatformProcess::UserDir() + TargetFolder + FileName;
+	}
+
+	RPES_LOG_WARNING(TEXT("Saving allocated ram measurement into \"%s\""),
+		*FileFullPath);
+
+	FFileHelper::SaveStringToFile(AllocatedRamMeasurement, *FileFullPath);
+}
+
+void APSDActorsCoordinator::SaveCpuMeasurements_Implementation() const
+{
+	FString TargetFolder = TEXT("CpuPercentageMeasurements");
+	FString FullFolderPath =
+		FString(FPlatformProcess::UserDir() + TargetFolder);
+
+	FullFolderPath = FullFolderPath.Replace(TEXT("/"), TEXT("\\\\"));
+
+	//Criando diretório se já não existe
+	if (!IFileManager::Get().DirectoryExists(*FullFolderPath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Criando diretorio: %s"),
+			*FullFolderPath);
+		IFileManager::Get().MakeDirectory(*FullFolderPath);
+	}
+
+	// Get the current world
+	UWorld* CurrentWorld = GetWorld();
+
+	// Get the current level
+	ULevel* CurrentLevel = CurrentWorld->GetCurrentLevel();
+
+	// Get the map name
+	FString MapName = CurrentLevel->GetOuter()->GetName();
+
+	int32 FileCount = 1;
+	FString FileName = FString::Printf(TEXT("/CpuPercentage_%s_%d.txt"),
+		*MapName, FileCount);
+
+	FString FileFullPath = FPlatformProcess::UserDir() + TargetFolder +
+		FileName;
+
+	while (IFileManager::Get().FileExists(*FileFullPath))
+	{
+		FileCount++;
+		FileName = FString::Printf(TEXT("/CpuPercentage_%s_%d.txt"),
+			*MapName, FileCount);
+
+		FileFullPath = FPlatformProcess::UserDir() + TargetFolder + FileName;
+	}
+
+	RPES_LOG_WARNING(TEXT("Saving cpu usage measurement into \"%s\""),
+		*FileFullPath);
+
+	FFileHelper::SaveStringToFile(CPUUsageMeasurement, *FileFullPath);
+}
+
+void APSDActorsCoordinator::GetRamMeasurement_Implementation()
+{
+	// Get the memory stats
+	FPlatformMemoryStats MemoryStats = FPlatformMemory::GetStats();
+
+	// Get and store the used memory
+	uint32 UsedMemoryMB = MemoryStats.UsedPhysical / (1024 * 1024);
+	UsedRamMeasurement += FString::Printf(TEXT("%d\n"),
+		UsedMemoryMB);
+
+	// Get and store the allocated memory
+	uint32 AllocatedMemoryMB =
+		MemoryStats.AvailablePhysical / (1024 * 1024);
+	AllocatedRamMeasurement += FString::Printf(TEXT("%d\n"), 
+		AllocatedMemoryMB);
+}
+
+void APSDActorsCoordinator::GetCPUMeasurement_Implementation()
+{
+    double cpuPercentage = 0.0;
+
+    // Execute the system command and read the output
+    FILE* pipe = _popen(GetCpuUsageCommand, "r");
+    if (!pipe) {
+        return;
+    }
+
+    char buffer[128];
+    std::string result = "";
+
+    while (!feof(pipe)) {
+        if (fgets(buffer, 128, pipe) != NULL) {
+            result += buffer;
+        }
+    }
+
+    _pclose(pipe);
+
+    // Parse the output to get the CPU percentage
+    cpuPercentage = std::stod(result);
+
+	// Append the cpu percentage to string
+	CPUUsageMeasurement += FString::Printf(TEXT("%f\n"), cpuPercentage);
+
+    return;
 }

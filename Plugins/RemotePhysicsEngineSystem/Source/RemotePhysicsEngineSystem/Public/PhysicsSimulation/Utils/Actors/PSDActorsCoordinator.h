@@ -157,6 +157,31 @@ private:
 	void OnPSDActorExitPhysicsRegion(APSDActorBase* ExitedPSDActor,
 		int32 ExitedPhysicsRegionId);
 
+	UFUNCTION(NetMulticast, Reliable)
+	void SaveDeltaTimeMeasurementToFile() const;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void SaveStepPhysicsTimeMeasureToFile() const;
+
+	/** */
+	UFUNCTION(NetMulticast, Reliable)
+	void GetCPUMeasurement();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void GetRamMeasurement();
+
+	/** */
+	UFUNCTION(NetMulticast, Reliable)
+	void SaveUsedRamMeasurements() const;
+
+	/** */
+	UFUNCTION(NetMulticast, Reliable)
+	void SaveAllocatedRamMeasurements() const;
+
+	/** */
+	UFUNCTION(NetMulticast, Reliable)
+	void SaveCpuMeasurements() const;
+
 private:
 	/** Gets all the physics services regions on the world. */
 	void GetAllPhysicsServiceRegions();
@@ -168,17 +193,12 @@ private:
 	*/
 	void UpdatePSDActors();
 
-	UFUNCTION(NetMulticast, Reliable)
-	void SaveDeltaTimeMeasurementToFile() const;
-
-	UFUNCTION(NetMulticast, Reliable)
-	void SaveStepPhysicsTimeMeasureToFile() const;
-
 private:
 	/**
 	* Flag that indicates if this PSD actor coordinator is currently updating
 	* the PSD actors
 	*/
+	UPROPERTY(Replicated)
 	bool bIsSimulatingPhysics = false;
 
 	/** The list of physics service regions on the world. */
@@ -221,4 +241,10 @@ private:
 
 	/** */
 	FString StepPhysicsTimeWithCommsOverheadTimeMeasure = FString();
+
+	FString UsedRamMeasurement = FString();
+	FString AllocatedRamMeasurement = FString();
+	FString CPUUsageMeasurement = FString();
+
+	bool bHasMeasuredCpuAndRamForSimulation = false;
 };
