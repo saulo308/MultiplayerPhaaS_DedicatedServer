@@ -20,6 +20,10 @@ const int32 DefaultServerId = 0;
 APSDActorsCoordinator::APSDActorsCoordinator()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	// Replication setup...
+	bReplicates = true;
+	bAlwaysRelevant = true;
 }
 
 void APSDActorsCoordinator::BeginPlay()
@@ -64,10 +68,10 @@ void APSDActorsCoordinator::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	DeltaTimeMeasurement += FString::Printf(TEXT("%f\n"), DeltaTime);
+
 	if (bIsSimulatingPhysics && HasAuthority())
 	{
-		DeltaTimeMeasurement += FString::Printf(TEXT("%f\n"), DeltaTime);
-
 		// Update PSD actors by simulating physics on the service
 		// and parsing it's results with the new actor position
 		UpdatePSDActors();
@@ -99,6 +103,12 @@ void APSDActorsCoordinator::GetAllPhysicsServiceRegions()
 		return RegionA.GetPhysicsServiceRegionId() 
 			< RegionB.GetPhysicsServiceRegionId();
 	});
+}
+
+void APSDActorsCoordinator::GetLifetimeReplicatedProps
+	(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }
 
 void APSDActorsCoordinator::OnPSDActorEnteredPhysicsRegion
@@ -427,6 +437,10 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		// Toggle the run flag and run thread
 		ThreadInfoPair.Key.ToggleShouldRun();
 		ThreadInfoPair.Key.Run();
+
+		const float CurrentDelta = GetWorld()->GetDeltaSeconds();
+		RPES_LOG_WARNING(TEXT("Sent update at(%d): %f"), UpdatedSocketCounter, 
+			CurrentDelta);
 	}
 
 	// For each socket client thread info, await its completion and get the
@@ -442,7 +456,11 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		auto& Thread = ThreadInfoPair.Value;
 
 		// Await the thread completion
-		Thread->WaitForCompletion();
+		Thread->WaitForCompletion(); 
+		
+		const float CurrentDelta = GetWorld()->GetDeltaSeconds();
+		RPES_LOG_WARNING(TEXT("Received update at (%d): %f"), 
+			UpdatedSocketCounter, CurrentDelta);
 
 		// Once completed, get the response on the worker
 		FString Result = ThreadWorker.GetResponse();
@@ -601,7 +619,8 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 	RPES_LOG_INFO(TEXT("PSD actors simulation has been stopped."));
 }
 
-void APSDActorsCoordinator::SaveDeltaTimeMeasurementToFile() const
+void APSDActorsCoordinator::SaveDeltaTimeMeasurementToFile_Implementation() 
+	const
 {
 	FString TargetFolder = TEXT("FPSMeasure");
 	FString FullFolderPath = 
@@ -648,7 +667,8 @@ void APSDActorsCoordinator::SaveDeltaTimeMeasurementToFile() const
 	FFileHelper::SaveStringToFile(DeltaTimeMeasurement, *FileFullPath);
 }
 
-void APSDActorsCoordinator::SaveStepPhysicsTimeMeasureToFile() const
+void APSDActorsCoordinator::SaveStepPhysicsTimeMeasureToFile_Implementation()
+	const
 {
 	FString TargetFolder = TEXT("StepPhysicsMeasureWithCommsOverhead");
 	FString FullFolderPath =

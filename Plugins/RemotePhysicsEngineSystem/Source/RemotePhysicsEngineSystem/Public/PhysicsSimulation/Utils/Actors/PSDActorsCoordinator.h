@@ -126,6 +126,10 @@ public:
 	*/
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	/** */
+	virtual void GetLifetimeReplicatedProps
+		(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 protected:
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
@@ -164,8 +168,10 @@ private:
 	*/
 	void UpdatePSDActors();
 
+	UFUNCTION(NetMulticast, Reliable)
 	void SaveDeltaTimeMeasurementToFile() const;
 
+	UFUNCTION(NetMulticast, Reliable)
 	void SaveStepPhysicsTimeMeasureToFile() const;
 
 private:

@@ -87,6 +87,14 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SpawnNewPSDSphere(const FVector SphereLocation);
 
+	/** */
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_ResetMap();
+
+	/** */
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_LoadMap(const FString& NewMap);
+
 public:
 	/** Called once every fame. */
 	virtual void Tick(float DeltaTime) override;

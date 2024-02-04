@@ -235,10 +235,10 @@ Server_StartPSDActorsTest_Implementation
 	GetPSDActorsControllers();
 
 	// First, destroy all PSD actors on level
-	Server_DestroyAllPSDActors();
+	//Server_DestroyAllPSDActors();
 
 	// Spawn the number of actors requested
-	Server_SpawnPSDActors(NumberOfActorsToSpawn);
+	//Server_SpawnPSDActors(NumberOfActorsToSpawn);
 
 	// Check if the coordinator is valid
 	check(PSDActorCoordinator.Get());
@@ -262,10 +262,24 @@ void ABouncingSpheresPlayerController::Server_SpawnNewPSDSphere_Implementation
 }
 
 void ABouncingSpheresPlayerController::GetLifetimeReplicatedProps
-	(TArray<FLifetimeProperty >& OutLifetimeProps) const
+	(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABouncingSpheresPlayerController,
 		bIsBouncingSpheresSimulationActive);
+}
+
+void ABouncingSpheresPlayerController::Server_ResetMap_Implementation()
+{
+	// Restart the level
+	GetWorld()->ServerTravel
+		(UGameplayStatics::GetCurrentLevelName(GetWorld()));
+}
+
+void ABouncingSpheresPlayerController::Server_LoadMap_Implementation
+	(const FString& NewMap)
+{
+	// Server travel to the new map
+	GetWorld()->ServerTravel(NewMap);
 }
