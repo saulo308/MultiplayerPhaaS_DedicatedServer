@@ -464,6 +464,13 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		std::chrono::steady_clock::now();
 	int32 UpdatedSocketCounter = 0;
 
+	// Get the current time in seconds
+	auto StartTime = std::chrono::high_resolution_clock::now(); 
+	auto StartTimeMicroseconds = std::chrono::time_point_cast<std::chrono::microseconds>(StartTime).time_since_epoch();
+	double StartTimeMicrosecondsDouble = static_cast<double>(StartTimeMicroseconds.count());
+
+	RPES_LOG_WARNING(TEXT("Start at: %f"),  StartTimeMicrosecondsDouble);
+
 	// For each socket client thread info, set the message to "step" and send
 	// for each physics service region (we know that each thread represents
 	// a given physics region)
@@ -480,9 +487,15 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		ThreadInfoPair.Key.ToggleShouldRun();
 		ThreadInfoPair.Key.Run();
 
-		const float CurrentDelta = GetWorld()->GetDeltaSeconds();
-		RPES_LOG_WARNING(TEXT("Sent update at(%d): %f"), UpdatedSocketCounter, 
-			CurrentDelta);
+		// Get the current time in seconds
+		auto CurrentTime = std::chrono::high_resolution_clock::now();
+
+		auto currentDuration = std::chrono::duration_cast<std::chrono::microseconds>
+			(CurrentTime - StartTime);
+		double currentdurationDouble = static_cast<double>(currentDuration.count());
+
+		RPES_LOG_WARNING(TEXT("Sent update at(%d): %f"), UpdatedSocketCounter,
+			currentdurationDouble);
 	}
 
 	// For each socket client thread info, await its completion
@@ -497,6 +510,17 @@ void APSDActorsCoordinator::UpdatePSDActors()
 
 		// Await the thread completion
 		Thread->WaitForCompletion();
+
+		// Get the current time in seconds
+		// Get the current time in seconds
+		auto CurrentTime = std::chrono::high_resolution_clock::now();
+
+		auto currentDuration = std::chrono::duration_cast<std::chrono::microseconds>
+			(CurrentTime - StartTime);
+		double currentdurationDouble = static_cast<double>(currentDuration.count());
+
+		RPES_LOG_WARNING(TEXT("Got update at(%d): %f"), UpdatedSocketCounter,
+			currentdurationDouble);
 
 		// Update the counter so we know when we reached the last socket 
 		// update
@@ -521,6 +545,14 @@ void APSDActorsCoordinator::UpdatePSDActors()
 			// services) in FString
 			const FString ElapsedPhysicsTimeMicroseconds =
 				UTF8_TO_TCHAR(elapsedTime.c_str());
+
+			RPES_LOG_WARNING(TEXT("STP Duration: %s"), 
+				*ElapsedPhysicsTimeMicroseconds);
+
+			auto duration = std::chrono::duration_cast<std::chrono::microseconds>
+				(CurrentTime - StartTime);
+			double durationDouble = static_cast<double>(duration.count());
+			RPES_LOG_WARNING(TEXT("Duration: %f"), durationDouble);
 
 			// Append the step physics time to the current step measurement
 			StepPhysicsTimeWithCommsOverheadTimeMeasure +=

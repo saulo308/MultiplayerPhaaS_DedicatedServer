@@ -3,21 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
-#define WIN32_LEAN_AND_MEAN
-
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <stdlib.h>
-                                                                                 
-// Need to link with Ws2_32.lib, Mswsock.lib, and Advapi32.lib
-#pragma comment (lib, "Ws2_32.lib")
-#pragma comment (lib, "Mswsock.lib")
-#pragma comment (lib, "AdvApi32.lib")
-
-/** The default buffer lenght for the socket connection. */
-#define DEFAULT_BUFLEN 1048576
+#include "RemotePhysicsEngineSystem/Public/ExternalCommunication/Sockets/SocketClientInstance.h"
 
 /**
 * This class deals with the socket communication with the physics services
@@ -63,20 +49,20 @@ public:
 	*/
 	static bool CloseSocketConnectionsToServerById(const int32 TargetServerId);
 
-	/** 
-	* Sends a message to the physics service server and awaits a response.
-	* This should be used to send physics requests to the physics service, such
-	* as initialization and update. 
-	* 
-	* @param Message The message to forward to the socket server with the given
-	* message
-	* @param ServerId The server id to send the message to
-	* 
-	* @return The physics service's server response to such message
+
+	/**
+	* Get the socket connection by the server's id.
+	*
+	* @param TargetServerId The server id to get the socket connection
+	*
+	* @return The socket connection given the server's id
+	*
+	* @note The SOCKET connection may be invalid if this server's id does not
+	* exists on the connection map
 	*/
-	static FString SendMessageAndGetResponse(const char* Message,
-		const int32 ServerId);
-	
+	static USocketClientInstance* GetSocketConnectionByServerId
+		(const int32 TargetServerId);
+
 public:
 	/** 
 	* Check if a connection is valid with a given physics service id. 
@@ -89,14 +75,9 @@ public:
 		const auto TargetSocketConnection = 
 			SocketConnectionsMap.Find(PhysicsServiceId);
 
-		// If invalid, return false
-		if (TargetSocketConnection == nullptr ||
-			*TargetSocketConnection == INVALID_SOCKET)
-		{
-			return false;
-		}
-
-		return true; 
+		// Return true if target connection exists and its connection is valid
+		return TargetSocketConnection != nullptr && 
+			(*TargetSocketConnection)->IsConnectionValid();
 	}
 
 	/** Getter to the current number of active physics services */
@@ -104,47 +85,9 @@ public:
 		{ return SocketConnectionsMap.Num(); }
 
 private:
-	/** Starts up the winsock library. */
-	static bool StartupWinsock();
-
-	/** 
-	* Get the addrinfo from the server as a TCP socket. 
-	* 
-	* @param ServerIpAddr The server's ip address to connect to
-	* @param ServerPort The server's port to connect to
-	* 
-	* @return The server's addrinfo
-	*/
-	static addrinfo* GetServerAddrInfo(const FString& ServerIpAddr,
-		const FString& ServerPort);
-
-	/** 
-	* Get the socket connection by the server's id.
-	* 
-	* @param TargetServerId The server id to get the socket connection
-	* 
-	* @return The socket connection given the server's id
-	* 
-	* @note The SOCKET connection may be invalid if this server's id does not
-	* exists on the connection map
-	*/
-	static SOCKET GetSocketConnectionByServerId(const int32 TargetServerId);
-
-	/** 
-	* Connects to a given addrinfo. This should be the TCP socket addrinfo to 
-	* connect to the physics service server.
-	* 
-	* @param AddrinfoToConnect The physics service server addrinfo
-	* @param ServerId The server's id. Used to easily find the created physics
-	* service server on the SocketConnectionsMap
-	*/
-	static void ConnectToServer(addrinfo* AddrinfoToConnect,
-		const int32 ServerId);
-
-private:
 	/**
 	* The sockets connection map. The key is the server's id and the value the
 	* socket connection itself.
 	*/
-	static TMap<int32, SOCKET> SocketConnectionsMap;
+	static TMap<int32, USocketClientInstance*> SocketConnectionsMap;
 };

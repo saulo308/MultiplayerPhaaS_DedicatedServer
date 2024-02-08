@@ -5,6 +5,7 @@
 #include "PhysicsSimulation/PSDActors/Base/PSDActorBase.h"
 #include "PhysicsSimulation/Utils/Components/PSDactorSpawnerComponent.h"
 #include "ExternalCommunication/Sockets/SocketClientProxy.h"
+#include "ExternalCommunication/Sockets/SocketClientInstance.h"
 #include "RemotePhysicsEngineSystem/RemotePhysicsEngineSystemLogging.h"
 
 #include "Components/BoxComponent.h"
@@ -88,17 +89,31 @@ void APhysicsServiceRegion::AddPSDActorCloneOnPhysicsService
 			*PSDActorCloneLinearVelocityAsString, 
 			*PSDActorCloneAngularVelocityString);
 
+	// Get the socket connection instance to send the message
+	auto* SocketConnectionToSend = 
+		FSocketClientProxy::GetSocketConnectionByServerId
+		(RegionOwnerPhysicsServiceId);
+
+	// Check if valid 
+	if (!SocketConnectionToSend)
+	{
+		RPES_LOG_ERROR(TEXT("Could not send message to socket with ID \"%d\" "
+			"as such connection does not exist."), 
+			RegionOwnerPhysicsServiceId);
+		return;
+	}
+
 	// Convert message to std string
 	std::string MessageAsStdString
-	(TCHAR_TO_UTF8(*SpawnNewPSDActorCloneMessage));
+		(TCHAR_TO_UTF8(*SpawnNewPSDActorCloneMessage));
 
 	// Convert message to char*. This is needed as some UE converting has the
 	// limitation of 128 bytes, returning garbage when it's over it
 	char* MessageAsChar = &MessageAsStdString[0];
 
 	// Send message to add the body to the physics world on service
-	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-		(MessageAsChar, RegionOwnerPhysicsServiceId);
+	const FString Response = SocketConnectionToSend->SendMessageAndGetResponse
+		(MessageAsChar);
 
 	RPES_LOG_INFO(TEXT("Add new PSDActor clone action response: %s"),
 		*Response);
@@ -329,6 +344,20 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 	// acknowledge the initialization message has ended with this token
 	InitializationMessage += "MessageEnd\n";
 
+	// Get the socket connection instance to send the message
+	auto* SocketConnectionToSend = 
+		FSocketClientProxy::GetSocketConnectionByServerId
+		(RegionOwnerPhysicsServiceId);
+
+	// Check if valid 
+	if (!SocketConnectionToSend)
+	{
+		RPES_LOG_ERROR(TEXT("Could not send message to socket with ID \"%d\" "
+			"as such connection does not exist."),
+			RegionOwnerPhysicsServiceId);
+		return;
+	}
+
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*InitializationMessage));
 
@@ -340,11 +369,11 @@ void APhysicsServiceRegion::InitializeRegionPhysicsWorld()
 		"Message: %s"), RegionOwnerPhysicsServiceId, *InitializationMessage);
 
 	// Send message to initialize physics world on service
-	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-		(MessageAsChar, RegionOwnerPhysicsServiceId);
+	const FString Response = SocketConnectionToSend->SendMessageAndGetResponse
+		(MessageAsChar);
 
-	//MPHAAS_LOG_INFO(TEXT("Physics service with ID (%d) response: %s"),
-		//RegionOwnerPhysicsServiceId, *Response);
+	RPES_LOG_WARNING(TEXT("Physics service with ID (%d) response: %s"),
+		RegionOwnerPhysicsServiceId, *Response);
 }
 
 void APhysicsServiceRegion::OnRegionEntry
@@ -434,6 +463,20 @@ void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
 	const FString RemoveBodyMessage =
 		FString::Printf(TEXT("RemoveBody\n%d\nMessageEnd\n"), BodyIdToRemove);
 
+	// Get the socket connection instance to send the message
+	auto* SocketConnectionToSend =
+		FSocketClientProxy::GetSocketConnectionByServerId
+		(RegionOwnerPhysicsServiceId);
+
+	// Check if valid 
+	if (!SocketConnectionToSend)
+	{
+		RPES_LOG_ERROR(TEXT("Could not send message to socket with ID \"%d\" "
+			"as such connection does not exist."),
+			RegionOwnerPhysicsServiceId);
+		return;
+	}
+
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*RemoveBodyMessage));
 
@@ -442,8 +485,8 @@ void APhysicsServiceRegion::RemovePSDActorFromPhysicsService
 	char* MessageAsChar = &MessageAsStdString[0];
 
 	// Send message to remove body from the physics world on service
-	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-		(MessageAsChar, RegionOwnerPhysicsServiceId);
+	const FString Response = SocketConnectionToSend->SendMessageAndGetResponse
+		(MessageAsChar);
 
 	RPES_LOG_INFO(TEXT("Remove body request response: %s"), *Response);
 }
@@ -590,7 +633,21 @@ void APhysicsServiceRegion::UpdatePSDActorBodyType
 	// MessageEnd\n"
 	const FString UpdateBodyTypeMessage =
 		FString::Printf(TEXT("UpdateBodyType\n%d;%s\nMessageEnd\n"),
-			TargetPSDActor->GetPSDActorBodyId(), *NewBodyType);
+		TargetPSDActor->GetPSDActorBodyId(), *NewBodyType);
+
+	// Get the socket connection instance to send the message
+	auto* SocketConnectionToSend =
+		FSocketClientProxy::GetSocketConnectionByServerId
+		(RegionOwnerPhysicsServiceId);
+
+	// Check if valid 
+	if (!SocketConnectionToSend)
+	{
+		RPES_LOG_ERROR(TEXT("Could not send message to socket with ID \"%d\" "
+			"as such connection does not exist."),
+			RegionOwnerPhysicsServiceId);
+		return;
+	}
 
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*UpdateBodyTypeMessage));
@@ -600,8 +657,8 @@ void APhysicsServiceRegion::UpdatePSDActorBodyType
 	char* MessageAsChar = &MessageAsStdString[0];
 
 	// Send message to update the body type on service
-	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-		(MessageAsChar, RegionOwnerPhysicsServiceId);
+	const FString Response = SocketConnectionToSend->SendMessageAndGetResponse
+		(MessageAsChar);
 
 	RPES_LOG_INFO(TEXT("Update PSDActor BodyType response: %s"),
 		*Response);
@@ -663,6 +720,20 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation,
 		NewSphereAngularVelocity.X, NewSphereAngularVelocity.Y, 
 		NewSphereAngularVelocity.Z);
 
+	// Get the socket connection instance to send the message
+	auto* SocketConnectionToSend =
+		FSocketClientProxy::GetSocketConnectionByServerId
+		(RegionOwnerPhysicsServiceId);
+
+	// Check if valid 
+	if (!SocketConnectionToSend)
+	{
+		RPES_LOG_ERROR(TEXT("Could not send message to socket with ID \"%d\" "
+			"as such connection does not exist."),
+			RegionOwnerPhysicsServiceId);
+		return;
+	}
+
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8(*SpawnNewPSDSphereMessage));
 
@@ -671,9 +742,8 @@ void APhysicsServiceRegion::SpawnNewPSDSphere(const FVector NewSphereLocation,
 	char* MessageAsChar = &MessageAsStdString[0];
 
 	// Send message to initialize physics world on service
-	// TODO this should receive a given physics service id
-	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-		(MessageAsChar, RegionOwnerPhysicsServiceId);
+	const FString Response = SocketConnectionToSend->SendMessageAndGetResponse
+		(MessageAsChar);
 
 	RPES_LOG_INFO(TEXT("Add new sphere action response: %s"), *Response);
 }
@@ -687,6 +757,20 @@ void APhysicsServiceRegion::SavePhysicsServiceMeasuresements()
 	const FString GetSimulationMeasuresMessage =
 		FString::Printf(TEXT("GetSimulationMeasures\n%d\nMessageEnd\n"));
 
+	// Get the socket connection instance to send the message
+	auto* SocketConnectionToSend =
+		FSocketClientProxy::GetSocketConnectionByServerId
+		(RegionOwnerPhysicsServiceId);
+
+	// Check if valid 
+	if (!SocketConnectionToSend)
+	{
+		RPES_LOG_ERROR(TEXT("Could not send message to socket with ID \"%d\" "
+			"as such connection does not exist."),
+			RegionOwnerPhysicsServiceId);
+		return;
+	}
+
 	// Convert message to std string
 	std::string MessageAsStdString(TCHAR_TO_UTF8
 		(*GetSimulationMeasuresMessage));
@@ -696,8 +780,8 @@ void APhysicsServiceRegion::SavePhysicsServiceMeasuresements()
 	char* MessageAsChar = &MessageAsStdString[0];
 
 	// Send message to initialize physics world on service
-	const FString Response = FSocketClientProxy::SendMessageAndGetResponse
-		(MessageAsChar, RegionOwnerPhysicsServiceId);
+	const FString Response = SocketConnectionToSend->SendMessageAndGetResponse
+		(MessageAsChar);
 	
 	// Save the physics service measurements to file
 	SavePhysicsServiceMeasuresToFile(Response);
