@@ -498,8 +498,8 @@ void APSDActorsCoordinator::UpdatePSDActors()
 	const FString ElapsedPhysicsTimeMicroseconds =
 		UTF8_TO_TCHAR(elapsedTime.c_str());
 
-	RPES_LOG_WARNING(TEXT("STP Duration: %s"),
-		*ElapsedPhysicsTimeMicroseconds);
+	//RPES_LOG_WARNING(TEXT("STP Duration: %s"),
+		//*ElapsedPhysicsTimeMicroseconds);
 
 	// Append the step physics time to the current step measurement
 	StepPhysicsTimeWithCommsOverheadTimeMeasure +=
