@@ -16,6 +16,7 @@
 #include <iostream>
 #include <sstream>
 #include <chrono>
+#include <thread>
 
 constexpr char GetCpuUsageCommand[] = "WMIC CPU GET LoadPercentage | findstr [0-9]";
 const int32 DefaultServerId = 0;
@@ -35,31 +36,6 @@ void APSDActorsCoordinator::BeginPlay()
 
 	// Get all physics service region on the map
 	GetAllPhysicsServiceRegions();
-
-	// Foreach physics service region, create a thread for its communication
-	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
-	{
-		// Get the physics region physics service id
-		const int32 RegionPhysicsServiceId =
-			PhysicsServiceRegion->RegionOwnerPhysicsServiceId;
-
-		// Create a new worker for this given region 
-		FSocketClientThreadWorker NewSocketClientWorker
-			(RegionPhysicsServiceId);
-
-		// Create the new thread for the worker
-		FRunnableThread* NewSocketClientThread = FRunnableThread::Create
-			(&NewSocketClientWorker, TEXT("SocketClientWorkerThread"));
-
-		// Create a new thread pair for the given work and thread
-		auto NewSocketClientThreadInfoPair = 
-			TPair<FSocketClientThreadWorker, FRunnableThread*>
-			(NewSocketClientWorker, NewSocketClientThread);
-
-		// Add the threading info the the list
-		SocketClientThreadsInfoList.Add(RegionPhysicsServiceId,
-			NewSocketClientThreadInfoPair);
-	}
 }
 
 void APSDActorsCoordinator::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -462,14 +438,6 @@ void APSDActorsCoordinator::UpdatePSDActors()
 	// Get pre step physics time (time spent updating physics on services)
 	std::chrono::steady_clock::time_point preStepPhysicsTime =
 		std::chrono::steady_clock::now();
-	int32 UpdatedSocketCounter = 0;
-
-	// Get the current time in seconds
-	auto StartTime = std::chrono::high_resolution_clock::now(); 
-	auto StartTimeMicroseconds = std::chrono::time_point_cast<std::chrono::microseconds>(StartTime).time_since_epoch();
-	double StartTimeMicrosecondsDouble = static_cast<double>(StartTimeMicroseconds.count());
-
-	RPES_LOG_WARNING(TEXT("Start at: %f"),  StartTimeMicrosecondsDouble);
 
 	// For each socket client thread info, set the message to "step" and send
 	// for each physics service region (we know that each thread represents
@@ -481,84 +449,61 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		auto& ThreadWoker = ThreadInfoPair.Key;
 
 		// Set the message to send on the worker
-		ThreadWoker.SetMessageToSend("Step\nMessageEnd\n");
-
-		// Toggle the run flag and run thread
-		ThreadInfoPair.Key.ToggleShouldRun();
-		ThreadInfoPair.Key.Run();
-
-		// Get the current time in seconds
-		auto CurrentTime = std::chrono::high_resolution_clock::now();
-
-		auto currentDuration = std::chrono::duration_cast<std::chrono::microseconds>
-			(CurrentTime - StartTime);
-		double currentdurationDouble = static_cast<double>(currentDuration.count());
-
-		RPES_LOG_WARNING(TEXT("Sent update at(%d): %f"), UpdatedSocketCounter,
-			currentdurationDouble);
+		ThreadWoker->SetMessageToSend("Step\nMessageEnd\n");
 	}
 
-	// For each socket client thread info, await its completion
-	for (auto& SocketClientThreadInfo : SocketClientThreadsInfoList)
+	while (true)
 	{
-		// Get the thread info
-		auto& ThreadInfoPair = SocketClientThreadInfo.Value;
+		int32 ReadySocketsToConsumeResponse = 0;
 
-		// Get the worker and the corresponding thread
-		auto& ThreadWorker = ThreadInfoPair.Key;
-		auto& Thread = ThreadInfoPair.Value;
-
-		// Await the thread completion
-		Thread->WaitForCompletion();
-
-		// Get the current time in seconds
-		// Get the current time in seconds
-		auto CurrentTime = std::chrono::high_resolution_clock::now();
-
-		auto currentDuration = std::chrono::duration_cast<std::chrono::microseconds>
-			(CurrentTime - StartTime);
-		double currentdurationDouble = static_cast<double>(currentDuration.count());
-
-		RPES_LOG_WARNING(TEXT("Got update at(%d): %f"), UpdatedSocketCounter,
-			currentdurationDouble);
-
-		// Update the counter so we know when we reached the last socket 
-		// update
-		UpdatedSocketCounter++;
-
-		// Once reached the last socket  update, get the time it took with
-		// stepping  physics
-		if (UpdatedSocketCounter == SocketClientThreadsInfoList.Num())
+		// Check for responses on each socket
+		for (auto& SocketClientThreadInfo : SocketClientThreadsInfoList)
 		{
-			// Get post physics update time
-			std::chrono::steady_clock::time_point postStepPhysicsTime =
-				std::chrono::steady_clock::now();
+			// Get the thread info
+			auto& ThreadInfoPair = SocketClientThreadInfo.Value;
 
-			// Calculate the microsseconds all step physics simulation
-			// (considering communication )took
-			std::stringstream ss;
-			ss << std::chrono::duration_cast<std::chrono::microseconds>
-				(postStepPhysicsTime - preStepPhysicsTime).count();
-			const std::string elapsedTime = ss.str();
+			// Get the worker and the corresponding thread
+			auto& ThreadWorker = ThreadInfoPair.Key;
+			auto& Thread = ThreadInfoPair.Value;
 
-			// Get the step phyiscs time (time spent updating physics on 
-			// services) in FString
-			const FString ElapsedPhysicsTimeMicroseconds =
-				UTF8_TO_TCHAR(elapsedTime.c_str());
-
-			RPES_LOG_WARNING(TEXT("STP Duration: %s"), 
-				*ElapsedPhysicsTimeMicroseconds);
-
-			auto duration = std::chrono::duration_cast<std::chrono::microseconds>
-				(CurrentTime - StartTime);
-			double durationDouble = static_cast<double>(duration.count());
-			RPES_LOG_WARNING(TEXT("Duration: %f"), durationDouble);
-
-			// Append the step physics time to the current step measurement
-			StepPhysicsTimeWithCommsOverheadTimeMeasure +=
-				ElapsedPhysicsTimeMicroseconds + "\n";
+			if (ThreadWorker->HasResponseToConsume())
+			{
+				ReadySocketsToConsumeResponse++;
+			}
 		}
+
+		if (ReadySocketsToConsumeResponse == SocketClientThreadsInfoList.Num())
+		{
+			break;
+		}
+
+		// Sleep for a short duration before the next check
+		//FPlatformProcess::Sleep(0.1);
+		//std::this_thread::sleep_for(std::chrono::microseconds(1));
 	}
+	
+	// Get post physics update time
+	std::chrono::steady_clock::time_point postStepPhysicsTime =
+		std::chrono::steady_clock::now();
+
+	// Calculate the microsseconds all step physics simulation
+	// (considering communication )took
+	std::stringstream ss;
+	ss << std::chrono::duration_cast<std::chrono::microseconds>
+		(postStepPhysicsTime - preStepPhysicsTime).count();
+	const std::string elapsedTime = ss.str();
+
+	// Get the step phyiscs time (time spent updating physics on 
+	// services) in FString
+	const FString ElapsedPhysicsTimeMicroseconds =
+		UTF8_TO_TCHAR(elapsedTime.c_str());
+
+	RPES_LOG_WARNING(TEXT("STP Duration: %s"),
+		*ElapsedPhysicsTimeMicroseconds);
+
+	// Append the step physics time to the current step measurement
+	StepPhysicsTimeWithCommsOverheadTimeMeasure +=
+		ElapsedPhysicsTimeMicroseconds + "\n";
 
 	// For each socket client thread info, get the physics service response so 
 	// we can delegate the update to the corresponding physics service
@@ -572,7 +517,7 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		auto& Thread = ThreadInfoPair.Value;
 
 		// Once completed, get the response on the worker
-		FString Result = ThreadWorker.GetResponse();
+		FString Result = ThreadWorker->ConsumeResponse();
 
 		// Get the region physics service id this thread represents so we can
 		// find and update it
@@ -610,6 +555,36 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 			"number of servers to connect to don't match the number of "
 			"physics services regions."));
 		return;
+	}
+
+	// Foreach physics service region, create a thread for its communication
+	for (const auto& PhysicsServiceRegion : PhysicsServiceRegionList)
+	{
+		// Get the physics region physics service id
+		const int32 RegionPhysicsServiceId =
+			PhysicsServiceRegion->RegionOwnerPhysicsServiceId;
+
+		// Create a new worker for this given region 
+		FSocketClientThreadWorker* NewSocketClientWorker = new
+			FSocketClientThreadWorker(RegionPhysicsServiceId);
+
+		// Create the new thread for the worker
+		FRunnableThread* NewSocketClientThread = FRunnableThread::Create
+		(NewSocketClientWorker,
+			*FString::Printf(TEXT("SocketClientWorkerThread_%d"),
+				RegionPhysicsServiceId));
+
+		// Start the thread work
+		NewSocketClientWorker->StartThread();
+
+		// Create a new thread pair for the given work and thread
+		auto NewSocketClientThreadInfoPair =
+			TPair<FSocketClientThreadWorker*, FRunnableThread*>
+			(NewSocketClientWorker, NewSocketClientThread);
+
+		// Add the threading info the the list
+		SocketClientThreadsInfoList.Add(RegionPhysicsServiceId,
+			NewSocketClientThreadInfoPair);
 	}
 	
 	// Reset delta measurements
@@ -705,6 +680,26 @@ void APSDActorsCoordinator::StopPSDActorsSimulation()
 		SaveAllocatedRamMeasurements();
 		SaveCpuMeasurements();
 	}
+
+	// For each socket client thread info, stop the thread
+	for (auto& SocketClientThreadInfo : SocketClientThreadsInfoList)
+	{
+		// Get the thread info
+		auto& ThreadInfoPair = SocketClientThreadInfo.Value;
+
+		// Get the worker and the corresponding thread
+		auto& ThreadWorker = ThreadInfoPair.Key;
+		auto& Thread = ThreadInfoPair.Value;
+
+		// Stop worker
+		ThreadWorker->Stop();
+
+		// Delete the thread
+		delete Thread;
+	}
+
+	// Clear the socket threads
+	SocketClientThreadsInfoList.Empty();
 
 	RPES_LOG_INFO(TEXT("PSD actors simulation has been stopped."));
 }
@@ -967,6 +962,10 @@ void APSDActorsCoordinator::GetRamMeasurement_Implementation()
 void APSDActorsCoordinator::GetCPUMeasurement_Implementation()
 {
     double cpuPercentage = 0.0;
+
+	// Hide the console window
+	AllocConsole();
+	ShowWindow(GetConsoleWindow(), SW_HIDE);
 
     // Execute the system command and read the output
     FILE* pipe = _popen(GetCpuUsageCommand, "r");

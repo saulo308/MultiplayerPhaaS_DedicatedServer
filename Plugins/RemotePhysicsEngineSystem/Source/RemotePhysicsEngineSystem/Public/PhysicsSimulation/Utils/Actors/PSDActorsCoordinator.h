@@ -229,7 +229,7 @@ private:
 	* workers that implement each physics service region socket communication.
 	* This is used to thread the physics update
 	*/
-	TMap<int32, TPair<class FSocketClientThreadWorker, class FRunnableThread*>>
+	TMap<int32, TPair<class FSocketClientThreadWorker*, class FRunnableThread*>>
 		SocketClientThreadsInfoList;
 
 	/** Counts the amount of step the physics system */

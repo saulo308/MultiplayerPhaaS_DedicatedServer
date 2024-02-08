@@ -26,7 +26,7 @@ public:
     */
     FSocketClientThreadWorker(int32 InServerId)
         : MessageToSend(""), ServerId(InServerId),
-        Response(FString()), bShouldRun(false) {}
+        Response(FString()), bIsRunning(false) {}
 
     /**
     * Initializes the runnable object. Called once the thread starts working.
@@ -52,7 +52,7 @@ public:
     */
     virtual void Stop() override 
     {
-        bShouldRun = false;
+        bIsRunning = false;
         MessageToSend.Empty();
         Response.Empty();
     }
@@ -63,7 +63,15 @@ public:
     * 
     * @return The socket server response to the message sent
     */
-    FString GetResponse() const { return Response; }
+    FString ConsumeResponse() 
+    { 
+        // Consume the response (set the response to FString so we can run
+        // the thread again)
+        const FString CosumedResponse = Response;
+        Response = FString();
+
+        return CosumedResponse;
+    }
 
     /** 
     * Sets the message to send to the socket server.
@@ -72,14 +80,15 @@ public:
     * runnable object runs
     */
     void SetMessageToSend(const FString& InMessageToSend)
-        { MessageToSend = InMessageToSend; }
+       { MessageToSend = InMessageToSend; }
 
-    /** 
-    * Toggles the "bShouldRun" flag. This should be toggled before calling 
-    * the "run()" method to avoid it being called more than once and also avoid
-    * it being called upon thread creation
-    */
-    void ToggleShouldRun() { bShouldRun = !bShouldRun; }
+    /** */
+    bool HasMessageToSend() const { return !MessageToSend.IsEmpty(); }
+
+    bool HasResponseToConsume() const { return !Response.IsEmpty(); }
+
+    /** */
+    void StartThread() { bIsRunning = true; }
 
 private:
     /** The message to send the socket server once run() is called. */
@@ -94,10 +103,6 @@ private:
     /** The socket server's response to the message sent */
     FString Response = FString();
 
-    /** 
-    * Flag that indicates if the message should be sent. I.e., indicates if
-    * the run() method can be called. Used to avoid multiple calls at once and
-    * avoid the run() method right after the thread creation
-    */
-    bool bShouldRun = false;
+    /** */
+    bool bIsRunning = false;
 };
