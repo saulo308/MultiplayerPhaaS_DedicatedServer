@@ -15,16 +15,20 @@ uint32 FSocketClientThreadWorker::Run()
     FPlatformProcess::Sleep(0.03f);
 
     // While the thread is active, keep running
-    while (bIsRunning)
+    while (IsThreadRunning())
     {
+        //RPES_LOG_WARNING(TEXT("(%d) Run thread (%d)!"), ServerId, 
+           // !HasMessageToSend());
+
         // If there's no message to send, do not run
         if (!HasMessageToSend())
         {
-
+            //RPES_LOG_WARNING(TEXT("No message to send"));
             // Sleep to avoid busy-waiting
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
             continue;
         }
+        //RPES_LOG_WARNING(TEXT("Send step!"));
 
         // Get the socket connection instance to send the message
         auto* SocketConnectionToSend =
@@ -38,6 +42,10 @@ uint32 FSocketClientThreadWorker::Run()
             return 0;
         }
 
+        const FString MessageToSendToSocket = GetMessageToSend();
+
+        //RPES_LOG_WARNING(TEXT("Sending message: %s"), *MessageToSendToSocket);
+
         // Convert message to send to std::string
         std::string MessageAsStdString(TCHAR_TO_UTF8(*MessageToSend));
 
@@ -46,11 +54,18 @@ uint32 FSocketClientThreadWorker::Run()
         char* MessageAsChar = &MessageAsStdString[0];
 
         // Send the message and get the response
-        Response = SocketConnectionToSend->SendMessageAndGetResponse
-            (MessageAsChar);
+        const auto ServerResponse = 
+            SocketConnectionToSend->SendMessageAndGetResponse(MessageAsChar);
+
+        // Set the response
+        SetResponse(ServerResponse);
 
         // Reset the message to send as we already sent it
-        MessageToSend = FString();
+        SetMessageToSend(FString());
+
+       // RPES_LOG_WARNING(TEXT("Got step!"));
+
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
     return 0;

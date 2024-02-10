@@ -26,7 +26,21 @@ public:
     */
     FSocketClientThreadWorker(int32 InServerId)
         : MessageToSend(""), ServerId(InServerId),
-        Response(FString()), bIsRunning(false) {}
+        Response(FString()), bIsRunning(false) 
+    {
+        // Initialize the critical section
+        SendMessageCriticalSection = new FCriticalSection();
+        ResponseMessageCriticalSection = new FCriticalSection();
+        ThreadRunningBoolCriticalSection = new FCriticalSection();
+    }
+    
+    // Destructor to clean up the critical section
+    ~FSocketClientThreadWorker()
+    {
+        delete SendMessageCriticalSection;
+        delete ResponseMessageCriticalSection;
+        delete ThreadRunningBoolCriticalSection;
+    }
 
     /**
     * Initializes the runnable object. Called once the thread starts working.
@@ -52,6 +66,11 @@ public:
     */
     virtual void Stop() override 
     {
+        // Lock the critical section before modifying shared data
+        FScopeLock LockResponseMessage(ResponseMessageCriticalSection);
+        FScopeLock LockSendMessage(SendMessageCriticalSection);
+        FScopeLock LockRunningBool(ThreadRunningBoolCriticalSection);
+
         bIsRunning = false;
         MessageToSend.Empty();
         Response.Empty();
@@ -64,7 +83,10 @@ public:
     * @return The socket server response to the message sent
     */
     FString ConsumeResponse() 
-    { 
+    {
+        // Lock the critical section before reading and modifying shared data
+        FScopeLock LockResponseMessage(ResponseMessageCriticalSection);
+
         // Consume the response (set the response to FString so we can run
         // the thread again)
         const FString CosumedResponse = Response;
@@ -79,16 +101,55 @@ public:
     * @param InMessageToSend The message to send to the socket server once this
     * runnable object runs
     */
-    void SetMessageToSend(const FString& InMessageToSend)
-       { MessageToSend = InMessageToSend; }
+    void SetMessageToSend(const FString InMessageToSend)
+    {
+        // Lock the critical section before modifying shared data
+        FScopeLock LockSendMessage(SendMessageCriticalSection);
+        MessageToSend = InMessageToSend; 
+    }
+
+    FString GetMessageToSend() const
+    {
+        // Lock the critical section before modifying shared data
+        FScopeLock LockSendMessage(SendMessageCriticalSection);
+        return MessageToSend;
+    }
 
     /** */
-    bool HasMessageToSend() const { return !MessageToSend.IsEmpty(); }
-
-    bool HasResponseToConsume() const { return !Response.IsEmpty(); }
+    void SetResponse(const FString InResponse)
+    {
+        // Lock the critical section before modifying shared data
+        FScopeLock LockResponseMessage(ResponseMessageCriticalSection);
+        Response = InResponse;
+    }
 
     /** */
-    void StartThread() { bIsRunning = true; }
+    bool HasMessageToSend() const 
+    {
+        // Lock the critical section before reading shared data
+        FScopeLock LockSendMessage(SendMessageCriticalSection);
+        return !MessageToSend.IsEmpty(); 
+    }
+
+    bool HasResponseToConsume() const 
+    {
+        // Lock the critical section before reading shared data
+        FScopeLock LockResponseMessage(ResponseMessageCriticalSection);
+        return !Response.IsEmpty(); 
+    }
+
+    /** */
+    void StartThread() 
+    {
+        FScopeLock LockRunningBool(ThreadRunningBoolCriticalSection);
+        bIsRunning = true; 
+    }
+
+    bool IsThreadRunning() const
+    {
+        FScopeLock LockRunningBool(ThreadRunningBoolCriticalSection);
+        return bIsRunning;
+    }
 
 private:
     /** The message to send the socket server once run() is called. */
@@ -105,4 +166,12 @@ private:
 
     /** */
     bool bIsRunning = false;
+
+    // Critical section to synchronize access to MessageToSend
+    FCriticalSection* SendMessageCriticalSection;
+
+    // Critical section to synchronize access to MessageToSend
+    FCriticalSection* ResponseMessageCriticalSection;
+
+    FCriticalSection* ThreadRunningBoolCriticalSection;
 };

@@ -135,6 +135,8 @@ void USocketClientInstance::ConnectToServer(addrinfo* addrinfoToConnect)
 
 bool USocketClientInstance::CloseSocketConnection()
 {
+    RPES_LOG_INFO(TEXT("Closing socket connection."));
+
     // Check if connection is valid
     if (SocketConnection == INVALID_SOCKET)
     {
@@ -167,7 +169,7 @@ bool USocketClientInstance::CloseSocketConnection()
 
 FString USocketClientInstance::SendMessageAndGetResponse(const char* Message)
 {
-    //RPES_LOG_INFO(TEXT("Sending message to server with id: %d."), ServerId);
+    RPES_LOG_INFO(TEXT("Sending message to server."));
 
     // Check if connection is valid
     if (!IsConnectionValid())
@@ -198,7 +200,6 @@ FString USocketClientInstance::SendMessageAndGetResponse(const char* Message)
 
     // Setup buffer length to receive message. 
     // Any more characters will be discarded
-    // TODO do a better solution for this
     char Recvbuf[DEFAULT_BUFLEN];
     const int Recvbuflen = DEFAULT_BUFLEN;
 
@@ -207,7 +208,7 @@ FString USocketClientInstance::SendMessageAndGetResponse(const char* Message)
 
     while (true)
     {
-        //RPES_LOG_INFO(TEXT("Awaiting server response..."));
+        RPES_LOG_INFO(TEXT("Awaiting server response..."));
 
         // Await response from socket 
         // (this will stall the game thread until we receive a response)
@@ -223,7 +224,7 @@ FString USocketClientInstance::SendMessageAndGetResponse(const char* Message)
         }
 
         // Debug amount of bytes received
-        //RPES_LOG_INFO(TEXT("Bytes received: %d"), ReceiveReturn);
+        RPES_LOG_INFO(TEXT("Bytes received: %d"), ReceiveReturn);
 
         // Decode message received from socket as FString
         // The buffer will contain the message returned as char

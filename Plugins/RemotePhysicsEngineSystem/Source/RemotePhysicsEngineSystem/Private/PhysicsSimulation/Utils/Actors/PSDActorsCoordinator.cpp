@@ -65,7 +65,7 @@ void APSDActorsCoordinator::Tick(float DeltaTime)
 
 				// Get and store the cpu percentage usage (will muiltcast to 
 				// clients)
-				GetCPUMeasurement();
+				//GetCPUMeasurement();
 			}
 			else
 			{
@@ -452,6 +452,8 @@ void APSDActorsCoordinator::UpdatePSDActors()
 		ThreadWoker->SetMessageToSend("Step\nMessageEnd\n");
 	}
 
+	//RPES_LOG_WARNING(TEXT("Sent all steps"));
+
 	while (true)
 	{
 		int32 ReadySocketsToConsumeResponse = 0;
@@ -474,12 +476,15 @@ void APSDActorsCoordinator::UpdatePSDActors()
 
 		if (ReadySocketsToConsumeResponse == SocketClientThreadsInfoList.Num())
 		{
+			//RPES_LOG_WARNING(TEXT("Responses ready!"));
 			break;
 		}
 
+		//RPES_LOG_WARNING(TEXT("Awaiting responses"));
+
 		// Sleep for a short duration before the next check
 		//FPlatformProcess::Sleep(0.1);
-		//std::this_thread::sleep_for(std::chrono::microseconds(1));
+		std::this_thread::sleep_for(std::chrono::microseconds(100));
 	}
 	
 	// Get post physics update time
@@ -570,9 +575,9 @@ void APSDActorsCoordinator::StartPSDActorsSimulation
 
 		// Create the new thread for the worker
 		FRunnableThread* NewSocketClientThread = FRunnableThread::Create
-		(NewSocketClientWorker,
+			(NewSocketClientWorker,
 			*FString::Printf(TEXT("SocketClientWorkerThread_%d"),
-				RegionPhysicsServiceId));
+			RegionPhysicsServiceId));
 
 		// Start the thread work
 		NewSocketClientWorker->StartThread();
