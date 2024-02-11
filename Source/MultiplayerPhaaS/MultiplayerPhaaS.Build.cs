@@ -20,7 +20,6 @@ public class MultiplayerPhaaS : ModuleRules
 			"OnlineSubsystem",
             "OnlineSubsystemSteam",
 			"RemotePhysicsEngineSystem",
-            "JoltPhysicsWrapper",
             "LocalPhysicsEngineSystem"
         });
 
