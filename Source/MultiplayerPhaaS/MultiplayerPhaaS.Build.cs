@@ -20,7 +20,8 @@ public class MultiplayerPhaaS : ModuleRules
 			"OnlineSubsystem",
             "OnlineSubsystemSteam",
 			"RemotePhysicsEngineSystem",
-            "JoltPhysicsWrapper"
+            "JoltPhysicsWrapper",
+            "LocalPhysicsEngineSystem"
         });
 
 		PrivateDependencyModuleNames.AddRange(new string[] 
