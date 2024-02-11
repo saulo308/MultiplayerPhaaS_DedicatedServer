@@ -7,8 +7,10 @@ public class MultiplayerPhaaS : ModuleRules
 	public MultiplayerPhaaS(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] 
+        bEnableUndefinedIdentifierWarnings = false;
+        CppStandard = CppStandardVersion.Cpp17;
+
+        PublicDependencyModuleNames.AddRange(new string[] 
 		{ 
 			"Core", 
 			"CoreUObject", 
@@ -17,7 +19,8 @@ public class MultiplayerPhaaS : ModuleRules
 			"UMG",
 			"OnlineSubsystem",
             "OnlineSubsystemSteam",
-			"RemotePhysicsEngineSystem"
+			"RemotePhysicsEngineSystem",
+            "JoltPhysicsWrapper"
         });
 
 		PrivateDependencyModuleNames.AddRange(new string[] 
