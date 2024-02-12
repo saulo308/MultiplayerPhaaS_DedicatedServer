@@ -59,7 +59,6 @@ void APSDActorsCoordinator_Local::Tick(float DeltaTime)
 				// don't want to measure the DeltaTime during it
 				DeltaTimeMeasurement += FString::Printf(TEXT("%f\n"),
 					DeltaTime);
-
 			}
 		}
 		else
@@ -90,24 +89,24 @@ void APSDActorsCoordinator_Local::GetLifetimeReplicatedProps
 void APSDActorsCoordinator_Local::InitializePhysicsWorld()
 {
 	// Start initialization message
-	FString InitializationMessage = "Init\n";
+	FString InitializationMessage = FString();
 
 	// Foreach PSD actor, get its StepPhysicsString
 	for (auto& PSDActor : PSDActorMap)
 	{
-		InitializationMessage += FString::Printf(TEXT("%d;%s\n"),
-			PSDActor.Key, *PSDActor.Value->GetCurrentActorLocationAsString());
+		InitializationMessage += 
+			PSDActor.Value->GetPhysicsServiceInitializationString();
 	}
 
 	// Convert message to std string
 	std::string InitializationMessageAsStdString
-	(TCHAR_TO_UTF8(*InitializationMessage));
+		(TCHAR_TO_UTF8(*InitializationMessage));
 
 	// Convert message to char*. This is needed as some UE converting has the
 	// limitation of 128 bytes, returning garbage when it's over it
 	char* InitializationMessageAsChar = &InitializationMessageAsStdString[0];
 
-	PhysicsServiceLocalImpl->InitPhysicsSystem(InitializationMessageAsChar);
+	PhysicsServiceLocalImpl->InitPhysicsSystem(InitializationMessage);
 }
 
 void APSDActorsCoordinator_Local::UpdatePSDActors()
@@ -120,30 +119,9 @@ void APSDActorsCoordinator_Local::UpdatePSDActors()
 
 	LPES_LOG_WARNING(TEXT("Stepping: %d"), StepPhysicsCounter++);
 
-	// Get pre step physics time
-	std::chrono::steady_clock::time_point preStepPhysicsTime =
-		std::chrono::steady_clock::now();
-
 	// Step physics
 	FString PhysicsSimulationResultStr =
 		PhysicsServiceLocalImpl->StepPhysicsSimulation();
-
-	// Get post physics time
-	std::chrono::steady_clock::time_point postStepPhysicsTime =
-		std::chrono::steady_clock::now();
-
-	// Calculate the microsseconds step physics simulation took
-	std::stringstream ss;
-	ss << std::chrono::duration_cast<std::chrono::microseconds>
-		(postStepPhysicsTime - preStepPhysicsTime).count();
-	const std::string elapsedTime = ss.str();
-
-	// Get the delta time in FString
-	const FString ElapsedPhysicsTimeMicroseconds =
-		UTF8_TO_TCHAR(elapsedTime.c_str());
-
-	// Append the delta time to the current step measurement
-	StepPhysicsTimeTimeMeasure += ElapsedPhysicsTimeMicroseconds + "\n";
 
 	// Parse physics simulation result
 	// Each line will contain a result for a actor in terms of:
@@ -160,7 +138,7 @@ void APSDActorsCoordinator_Local::UpdatePSDActors()
 			TEXT(";"), false);
 
 		// Check for errors
-		if (ParsedActorSimulationResult.Num() < 7)
+		if (ParsedActorSimulationResult.Num() < 13)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Could not parse line %s. Num is:%d"),
 				*SimulationResultLine, ParsedSimulationResult.Num());
@@ -170,15 +148,46 @@ void APSDActorsCoordinator_Local::UpdatePSDActors()
 		// Get the actor id to float
 		const uint32 ActorID = FCString::Atoi(*ParsedActorSimulationResult[0]);
 
+		// Check if the PSDActor exist with such id on the map
+		if (!PSDActorMap.Contains(ActorID))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Could not find actor with id %d"),
+				ActorID);
+			continue;
+		}
+
 		// Find the actor on the map
 		APSDActorBase* ActorToUpdate = PSDActorMap[ActorID];
 		if (!ActorToUpdate)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Could not find actor with ID:%f"),
+			UE_LOG(LogTemp, Warning, TEXT("Actor with id %d is not valid."),
 				ActorID);
-
 			continue;
 		}
+
+		// Update PSD actor linear velocity
+		const float NewLinearVelocityX =
+			FCString::Atof(*ParsedActorSimulationResult[7]);
+		const float NewLinearVelocityY =
+			FCString::Atof(*ParsedActorSimulationResult[8]);
+		const float NewLinearVelocityZ =
+			FCString::Atof(*ParsedActorSimulationResult[9]);
+		const FVector NewLinearVelocity(NewLinearVelocityX, NewLinearVelocityY,
+			NewLinearVelocityZ);
+
+		ActorToUpdate->SetPSDActorLinearVelocity(NewLinearVelocity);
+
+		// Update PSD actor angular velocity
+		const float NewAngularVelocityX =
+			FCString::Atof(*ParsedActorSimulationResult[10]);
+		const float NewAngularVelocityY =
+			FCString::Atof(*ParsedActorSimulationResult[11]);
+		const float NewAngularVelocityZ =
+			FCString::Atof(*ParsedActorSimulationResult[12]);
+		const FVector NewAngularVelocity(NewAngularVelocityX,
+			NewAngularVelocityY, NewAngularVelocityZ);
+
+		ActorToUpdate->SetPSDActorAngularVelocity(NewAngularVelocity);
 
 		// Update PSD actor position with the result
 		const float NewPosX = FCString::Atof(*ParsedActorSimulationResult[1]);
@@ -220,11 +229,13 @@ void APSDActorsCoordinator_Local::StartPSDActorsSimulation
 			continue;
 		}
 
+		// Get the PSDActor body id
+		const auto PSDActorBodyId = PSDActor->GetPSDActorBodyId();
+
 		// Add to map 
-		// The key is the body id on the physics system. Starts at 1 as the
-		// flor on physics system has body id of 0
+		// The key is the body id on the physics system.
 		// The value is the reference to the actor
-		PSDActorMap.Add(i + 1, PSDActor);
+		PSDActorMap.Add(PSDActorBodyId, PSDActor);
 	}
 
 	PhysicsServiceLocalImpl = new FPhysicsServiceImpl();
@@ -238,7 +249,6 @@ void APSDActorsCoordinator_Local::StartPSDActorsSimulation
 	InitializePhysicsWorld();
 
 	DeltaTimeMeasurement = FString();
-	StepPhysicsTimeTimeMeasure = FString();
 
 	bIsSimulatingPhysics = true;
 
@@ -271,6 +281,9 @@ void APSDActorsCoordinator_Local::StopPSDActorsSimulation()
 
 	// Set the flag to false to stop ticking PSDActors' update
 	bIsSimulatingPhysics = false;
+
+	// Get the step physics time measurements on physics implementation
+	StepPhysicsTimeMeasure = PhysicsServiceLocalImpl->GetSimulationMeasures();
 
 	if (HasAuthority())
 	{
@@ -311,7 +324,7 @@ void APSDActorsCoordinator_Local::SaveDeltaTimeMeasurementToFile_Implementation(
 	FString MapName = CurrentLevel->GetOuter()->GetName();
 
 	int32 FileCount = 1;
-	FString FileName = FString::Printf(TEXT("/%s_Remote_%d.txt"), *MapName,
+	FString FileName = FString::Printf(TEXT("/%s_Local_%d.txt"), *MapName,
 		FileCount);
 
 	FString FileFullPath = FPlatformProcess::UserDir() + TargetFolder +
@@ -320,7 +333,7 @@ void APSDActorsCoordinator_Local::SaveDeltaTimeMeasurementToFile_Implementation(
 	while (IFileManager::Get().FileExists(*FileFullPath))
 	{
 		FileCount++;
-		FileName = FString::Printf(TEXT("/%s_Remote_%d.txt"), *MapName,
+		FileName = FString::Printf(TEXT("/%s_Local_%d.txt"), *MapName,
 			FileCount);
 
 		FileFullPath = FPlatformProcess::UserDir() + TargetFolder + FileName;
@@ -377,7 +390,7 @@ const
 	LPES_LOG_WARNING(TEXT("Saving step physics time measurement into \"%s\""),
 		*FileFullPath);
 
-	FFileHelper::SaveStringToFile(StepPhysicsTimeTimeMeasure, *FileFullPath);
+	FFileHelper::SaveStringToFile(StepPhysicsTimeMeasure, *FileFullPath);
 }
 
 void APSDActorsCoordinator_Local::SaveUsedRamMeasurements_Implementation() const

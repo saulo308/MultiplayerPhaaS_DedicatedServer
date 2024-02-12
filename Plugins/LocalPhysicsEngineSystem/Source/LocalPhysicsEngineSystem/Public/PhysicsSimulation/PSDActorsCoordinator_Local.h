@@ -134,7 +134,7 @@ private:
 	FString DeltaTimeMeasurement = FString();
 
 	/** */
-	FString StepPhysicsTimeTimeMeasure = FString();
+	FString StepPhysicsTimeMeasure = FString();
 
 	/** */
 	FString UsedRamMeasurement = FString();

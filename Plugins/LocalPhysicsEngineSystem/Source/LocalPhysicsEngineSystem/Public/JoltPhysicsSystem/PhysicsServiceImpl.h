@@ -46,7 +46,7 @@ public:
     * ...
     * MessageEnd"
     */
-    void InitPhysicsSystem(const std::string initializationActorsInfo);
+    void InitPhysicsSystem(const FString& initializationActorsInfo);
 
     /**
     * Steps the current physics system simulation by one frame.
@@ -97,7 +97,7 @@ public:
 
     /** */
     FString GetSimulationMeasures() const
-        { return physicsStepSimulationTimeMeasure; }
+        { return PhysicsStepSimulationTimeMeasure; }
 
     /**
     * Removes a Body from the current running physics world. Thus, this body
@@ -191,11 +191,11 @@ public:
     * The step physics counter. Will count the number of steps as it
     * increases at each step physics call.
     */
-    uint32 stepPhysicsCounter = 0;
+    uint32 StepPhysicsCounter = 0;
 
     /**
     * The current physics step time measure without communication overhead.
     * Used to test the overall system
     */
-    FString physicsStepSimulationTimeMeasure = "";
+    FString PhysicsStepSimulationTimeMeasure = "";
 };

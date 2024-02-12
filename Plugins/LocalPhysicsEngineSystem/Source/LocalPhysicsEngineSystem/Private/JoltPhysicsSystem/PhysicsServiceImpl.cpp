@@ -9,9 +9,10 @@ FPhysicsServiceImpl::FPhysicsServiceImpl()
 }
 
 void FPhysicsServiceImpl::InitPhysicsSystem
-	(const std::string initializationActorsInfo)
+	(const FString& initializationActorsInfo)
 {
 	LPES_LOG_INFO(TEXT("Initializing physics system..."));
+	LPES_LOG_INFO(TEXT("Init message: %s"), *initializationActorsInfo);
 
 	// If physics system is already initialized, clear the last initialization
 	if (bIsInitialized)
@@ -26,8 +27,8 @@ void FPhysicsServiceImpl::InitPhysicsSystem
 	//Trace = TraceImpl;
 	JPH_IF_ENABLE_ASSERTS(AssertFailed = AssertFailedImpl;)
 
-		// Create a factory
-		Factory::sInstance = new Factory();
+	// Create a factory
+	Factory::sInstance = new Factory();
 
 	// Register all Jolt physics types
 	RegisterTypes();
@@ -128,33 +129,21 @@ void FPhysicsServiceImpl::InitPhysicsSystem
 	// we're not planning to access bodies from multiple threads)
 	body_interface = &physics_system->GetBodyInterface();
 
-	// Split actors info from initialization into lines
-	std::stringstream initializationStringStream(initializationActorsInfo);
-	std::vector<std::string> initializationActorsInfoLines;
-
-	std::string line;
-	while (std::getline(initializationStringStream, line))
-	{
-		initializationActorsInfoLines.push_back(line);
-	}
+	TArray<FString> initializationActorsInfoLines;
+	initializationActorsInfo.ParseIntoArrayLines
+		(initializationActorsInfoLines);
 
 	// for each line, create a new body with according to the
 	// body's type, id and initial location
-	for (int i = 0; i < initializationActorsInfoLines.size(); i++)
+	for (int i = 0; i < initializationActorsInfoLines.Num(); i++)
 	{
 		// Split info with ";" delimiter
-		std::stringstream actorInfoStringStream
-			(initializationActorsInfoLines[i]);
-		std::vector<std::string> actorInfoList;
-
-		std::string actorInfoData;
-		while (std::getline(actorInfoStringStream, actorInfoData, ';'))
-		{
-			actorInfoList.push_back(actorInfoData);
-		}
+		TArray<FString> actorInfoList;
+		initializationActorsInfoLines[i].ParseIntoArray(actorInfoList,
+			TEXT(";"));
 
 		// Check for errors
-		if (actorInfoList.size() < 5)
+		if (actorInfoList.Num() < 5)
 		{
 			LPES_LOG_INFO(TEXT("Error on parsing addBody message info. Line "
 				"with less than 5 params."));
@@ -162,22 +151,25 @@ void FPhysicsServiceImpl::InitPhysicsSystem
 		}
 
 		// Get the actor's type to be creates
-		const std::string actorType{ actorInfoList[0] };
+		const FString actorType = actorInfoList[0];
 
 		// Get the actor ID from the init info
-		const int actorId{ std::stoi(actorInfoList[1]) };
+		const int actorId =	FCString::Atoi(*actorInfoList[1]);
 		const BodyID newBodyID(actorId);
 
+		// We discard here actorInfoList[2] as it is the BodyType info, no
+		// used here
+
 		// Get actor initial pos
-		const double initialPosX{ std::stod(actorInfoList[2]) };
-		const double initialPosY{ std::stod(actorInfoList[3]) };
-		const double initialPosZ{ std::stod(actorInfoList[4]) };
+		const double initialPosX = FCString::Atof(*actorInfoList[3]);
+		const double initialPosY = FCString::Atof(*actorInfoList[4]);
+		const double initialPosZ = FCString::Atof(*actorInfoList[5]);
 
 		const RVec3 bodyInitialPosition{ RVec3(initialPosX, initialPosY,
 			initialPosZ) };
 
 		// Check if we should create a floor
-		if (actorType.find("floor") != std::string::npos)
+		if (actorType.Contains("floor"))
 		{
 			// Add new floor to the physics world
 			AddNewFloorToPhysicsSystem(newBodyID, bodyInitialPosition);
@@ -185,7 +177,7 @@ void FPhysicsServiceImpl::InitPhysicsSystem
 		}
 
 		// Check if we should create a sphere
-		if (actorType.find("sphere") != std::string::npos)
+		if (actorType.Contains("sphere"))
 		{
 			// Add new sphere to the physics world
 			AddNewSphereToPhysicsWorld(newBodyID, bodyInitialPosition, RVec3(), 
@@ -193,9 +185,6 @@ void FPhysicsServiceImpl::InitPhysicsSystem
 			continue;
 		}
 	}
-
-	// Seed the random number generator with the current time
-	srand(static_cast<unsigned int>(time(0)));
 
 	// Optional step: Before starting the physics simulation you can optimize 
 	// the broad phase. This improves collision detection performance 
@@ -207,7 +196,7 @@ void FPhysicsServiceImpl::InitPhysicsSystem
 	//physics_system->OptimizeBroadPhase();
 
 	// Reset the step physics time measurement 
-	physicsStepSimulationTimeMeasure = "";
+	PhysicsStepSimulationTimeMeasure = "";
 
 	bIsInitialized = true;
 
@@ -232,19 +221,19 @@ FString FPhysicsServiceImpl::StepPhysicsSimulation()
 	// response string
 	FString stepPhysicsResponse = "";
 
-	// Get pre step physics time
+	// Get pre step physics time (time spent updating physics)
 	std::chrono::steady_clock::time_point preStepPhysicsTime =
 		std::chrono::steady_clock::now();
 
 	// Step the world
-	LPES_LOG_INFO(TEXT("Stepping physics..."));
+	LPES_LOG_INFO(TEXT("(Step: %d)"), StepPhysicsCounter);
 
 	physics_system->Update(cDeltaTime, cCollisionSteps, cIntegrationSubSteps,
 		temp_allocator, job_system);
 
 	LPES_LOG_INFO(TEXT("Physics stepping finished."));
 
-	// Get post physics communication time
+	// Get post physics update time
 	std::chrono::steady_clock::time_point postStepPhysicsTime =
 		std::chrono::steady_clock::now();
 
@@ -255,10 +244,13 @@ FString FPhysicsServiceImpl::StepPhysicsSimulation()
 		(postStepPhysicsTime - preStepPhysicsTime).count();
 	const std::string elapsedTime = ss.str();
 
-	// Append the delta time to the current step measurement
-	//physicsStepSimulationTimeMeasure += elapsedTime + "\n";
+	// Get the step phyiscs time (time spent updating physics on 
+	// services) in FString
+	const FString ElapsedPhysicsTimeMicroseconds =
+		UTF8_TO_TCHAR(elapsedTime.c_str());
 
-	LPES_LOG_INFO(TEXT("(Step: %d)"), stepPhysicsCounter);
+	// Append the step physics time to the current step measurement
+	PhysicsStepSimulationTimeMeasure += ElapsedPhysicsTimeMicroseconds + "\n";
 
 	// For each body on the physics system:
 	for (auto& bodyId : BodyIdList)
@@ -307,10 +299,11 @@ FString FPhysicsServiceImpl::StepPhysicsSimulation()
 		stepPhysicsResponse += bodyStepResultInfo;
 	}
 
-	LPES_LOG_INFO(TEXT("(Step: %d) StepPhysics response: %s"), 
-		stepPhysicsCounter,	*stepPhysicsResponse);
+	//LPES_LOG_INFO(TEXT("(Step: %d) StepPhysics response: %s"), 
+		//stepPhysicsCounter,	*stepPhysicsResponse);
 
-	stepPhysicsCounter++;
+	// Count the step
+	StepPhysicsCounter++;
 
 	return stepPhysicsResponse;
 }
@@ -433,7 +426,7 @@ FString FPhysicsServiceImpl::RemoveBodyByID(const BodyID bodyToRemoveID)
 
 void FPhysicsServiceImpl::ClearPhysicsSystem()
 {
-	LPES_LOG_INFO(TEXT(";Cleaning physics system..."));
+	LPES_LOG_INFO(TEXT("Cleaning physics system..."));
 
 	for (auto& bodyId : BodyIdList)
 	{

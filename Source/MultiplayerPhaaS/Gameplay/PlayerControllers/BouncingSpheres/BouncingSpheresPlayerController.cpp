@@ -15,6 +15,8 @@
 #include "PhysicsSimulation/Utils/Actors/PSDActorsCoordinator.h"
 #include "PhysicsSimulation/Utils/Actors/PSDActorsSpawner.h"
 
+#include "PhysicsSimulation/PSDActorsCoordinator_Local.h"
+
 #include "MultiplayerPhaaS/MultiplayerPhaaSLogging.h"
 
 void ABouncingSpheresPlayerController::SetupInputComponent()
@@ -145,13 +147,13 @@ void ABouncingSpheresPlayerController::GetPSDActorsControllers()
 	// Get all actors of APSDActorsCoordinator
 	TArray<AActor*> OutActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(),
-		APSDActorsCoordinator::StaticClass(), OutActors);
+		APSDActorsCoordinator_Local::StaticClass(), OutActors);
 
 	// Check if there is only one avaialble on the map
 	check(OutActors.Num() == 1);
 
 	// Get the PSDActorsCoordinator on the map
-	PSDActorCoordinator = Cast<APSDActorsCoordinator>(OutActors[0]);
+	PSDActorCoordinator = Cast<APSDActorsCoordinator_Local>(OutActors[0]);
 
 	// Check if valid
 	check(PSDActorCoordinator.Get());
