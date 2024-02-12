@@ -21,7 +21,8 @@ public class LocalPhysicsEngineSystem : ModuleRules
 			"Engine",
 			"Slate",
 			"SlateCore",
-			"JoltPhysicsWrapper"
+			"JoltPhysicsWrapper",
+			"RemotePhysicsEngineSystem"
 		});
 	}
 }

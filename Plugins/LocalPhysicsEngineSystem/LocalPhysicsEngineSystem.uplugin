@@ -25,6 +25,10 @@
 		{
 			"Name": "JoltPhysicsPlugin",
 			"Enabled": true
+		},
+		{
+			"Name": "RemotePhysicsEngineSystem",
+			"Enabled": true
 		}
 	]
 }

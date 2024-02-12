@@ -72,7 +72,7 @@ public:
 	* @return True if PSD actors are simulating physics. False otherwise
 	*/
 	UFUNCTION(BlueprintCallable)
-	bool IsSimulating() { return bIsSimulatingPhysics; }
+	bool IsSimulating() const { return bIsSimulatingPhysics; }
 
 	/**
 	* Starts the PSD actors simulation. First will open a connection with the

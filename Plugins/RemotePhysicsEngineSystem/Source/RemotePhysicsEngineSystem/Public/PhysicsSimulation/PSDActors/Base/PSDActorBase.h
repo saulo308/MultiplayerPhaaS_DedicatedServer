@@ -51,7 +51,7 @@ class REMOTEPHYSICSENGINESYSTEM_API APSDActorBase : public AActor
 public:
 	/** Getter to the physics service region owner id */
 	UFUNCTION(BlueprintCallable)
-	int32 GetActorOwnerPhysicsServiceRegionId()
+	int32 GetActorOwnerPhysicsServiceRegionId() const
 		{ return ActorOwnerPhysicsServiceRegionId; }
 
 	/**
@@ -59,7 +59,7 @@ public:
 	* region
 	*/
 	UFUNCTION(BlueprintCallable)
-	EPSDActorPhysicsRegionStatus GetPSDActorPhysicsRegionStatus()
+	EPSDActorPhysicsRegionStatus GetPSDActorPhysicsRegionStatus() const
 		{ return CurrentPSDActorPhysicsRegionStatus; }
 
 	/** Setter to the physics service region owner id */
