@@ -152,7 +152,7 @@ private:
 private:
 	/** The reference to the PSDActorsCoordinator placed on the map */
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "True"))
-	TWeakObjectPtr<class APSDActorsCoordinator_Local> PSDActorCoordinator;
+	TWeakObjectPtr<class APSDActorsCoordinator> PSDActorCoordinator;
 
 	/** The reference to the PSDActorsSpawner placed on the map */
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "True"))
